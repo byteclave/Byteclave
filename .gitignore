@@ -30,7 +30,12 @@ node_modules
 # misc
 /.sass-cache
 /connect.lock
+/.env
+/.env.*
+!/.env.example
 /coverage
+**/.next/
+.vercel
 /libpeerconnection.log
 npm-debug.log
 yarn-error.log

@@ -1,16 +1,37 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import { parseServerEnvironment } from "@workspace/config";
 import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+type Database = ReturnType<typeof drizzle<typeof schema>>;
+
+const globalForDatabase = globalThis as typeof globalThis & {
+  byteclavePool?: InstanceType<typeof Pool>;
+  byteclaveDb?: Database;
+};
+
+export function getPool(): InstanceType<typeof Pool> {
+  if (!globalForDatabase.byteclavePool) {
+    const env = parseServerEnvironment();
+    globalForDatabase.byteclavePool = new Pool({
+      connectionString: env.DATABASE_URL,
+      max: 10,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 5_000,
+    });
+  }
+  return globalForDatabase.byteclavePool;
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
+export function getDb(): Database {
+  if (!globalForDatabase.byteclaveDb) {
+    globalForDatabase.byteclaveDb = drizzle(getPool(), { schema });
+  }
+  return globalForDatabase.byteclaveDb;
+}
 
 export * from "./schema";
+export * from "./services";
+export * from "./queries";

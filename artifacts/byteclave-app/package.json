@@ -1,0 +1,26 @@
+{
+  "name": "@workspace/byteclave-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0 --port ${PORT:-3000}",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0 --port ${PORT:-3000}",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "catalog:"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "next": "^16.4.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "server-only": "^0.0.1"
+  }
+}

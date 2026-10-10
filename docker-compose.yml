@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: byteclave
+      POSTGRES_USER: byteclave
+      POSTGRES_PASSWORD: byteclave
+    ports:
+      - "5432:5432"
+    volumes:
+      - byteclave-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U byteclave -d byteclave"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://byteclave:byteclave@postgres:5432/byteclave
+      INITIAL_OWNER_EMAIL: ${INITIAL_OWNER_EMAIL:-byteclave@gmail.com}
+    ports:
+      - "3000:3000"
+
+  migrate-seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["setup"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://byteclave:byteclave@postgres:5432/byteclave
+      INITIAL_OWNER_EMAIL: ${INITIAL_OWNER_EMAIL:-byteclave@gmail.com}
+    command:
+      - sh
+      - -c
+      - pnpm db:migrate && pnpm db:seed
+
+volumes:
+  byteclave-postgres:
