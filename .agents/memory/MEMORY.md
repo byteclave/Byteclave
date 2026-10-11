@@ -1,0 +1,1 @@
+- [Next.js Turbopack on Replit](next-turbopack-replit.md) — use extensionless workspace imports and allow the loopback origin for preview HMR.
