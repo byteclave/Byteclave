@@ -1,6 +1,13 @@
-import { asc, count, eq } from "drizzle-orm";
+import { and, asc, countDistinct, eq } from "drizzle-orm";
 import { getDb } from "../index";
-import { categories, collections, discoveries, subcategories } from "../schema/index";
+import {
+  categories,
+  collectionDiscoveries,
+  collections,
+  discoveries,
+  discoveryPlacements,
+  subcategories,
+} from "../schema/index";
 
 export async function getExploreCatalog() {
   const database = getDb();
@@ -28,12 +35,29 @@ export async function getExploreCatalog() {
           slug: collections.slug,
           name: collections.name,
           description: collections.description,
+          publishedDiscoveryCount: countDistinct(discoveries.id),
         })
         .from(collections)
+        .leftJoin(
+          collectionDiscoveries,
+          eq(collectionDiscoveries.collectionId, collections.id),
+        )
+        .leftJoin(
+          discoveries,
+          and(
+            eq(collectionDiscoveries.discoveryId, discoveries.id),
+            eq(discoveries.status, "published"),
+          ),
+        )
+        .groupBy(collections.id)
         .orderBy(asc(collections.name)),
       database
-        .select({ value: count() })
+        .select({ value: countDistinct(discoveries.id) })
         .from(discoveries)
+        .innerJoin(
+          discoveryPlacements,
+          eq(discoveryPlacements.discoveryId, discoveries.id),
+        )
         .where(eq(discoveries.status, "published")),
     ]);
 

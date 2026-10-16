@@ -42,6 +42,7 @@ export interface CatalogSeedRepository {
     discoveryId: string;
     sortOrder: number;
   }): Promise<void>;
+  publishDiscovery(discoveryId: string): Promise<void>;
 }
 
 export async function seedCatalog(
@@ -80,7 +81,7 @@ export async function seedCatalog(
   }
 
   for (const discovery of seed.discoveries) {
-    const { tags, placements, ...input } = discovery;
+    const { tags, placements, publish, ...input } = discovery;
     const record = await repository.upsertDiscovery(
       discoveryInputSchema.parse(input),
     );
@@ -126,6 +127,10 @@ export async function seedCatalog(
         discoveryId: record.id,
         tagId: tagRecord.id,
       });
+    }
+
+    if (publish) {
+      await repository.publishDiscovery(record.id);
     }
   }
 

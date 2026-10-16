@@ -16,6 +16,7 @@ export interface SeedCategory extends CategoryInput {
 
 export interface SeedDiscovery extends DiscoveryInput {
   tags: string[];
+  publish?: boolean;
   placements: Array<{
     categorySlug: string;
     subcategorySlug?: string;
@@ -93,6 +94,7 @@ export const catalogSeed: CatalogSeed = {
       title: "GitHub",
       summary: "A platform for hosting and collaborating on software projects.",
       url: "https://github.com/",
+      publish: true,
       tags: ["web-app"],
       placements: [{ categorySlug: "developer-tools", subcategorySlug: "code-hosting" }],
     },
@@ -101,6 +103,7 @@ export const catalogSeed: CatalogSeed = {
       title: "Excalidraw",
       summary: "A browser-based whiteboard for hand-drawn diagrams.",
       url: "https://excalidraw.com/",
+      publish: true,
       tags: ["open-source", "web-app"],
       placements: [{ categorySlug: "creative-tools", subcategorySlug: "diagramming" }],
     },
@@ -109,6 +112,7 @@ export const catalogSeed: CatalogSeed = {
       title: "Obsidian",
       summary: "A local-first knowledge base built from linked notes.",
       url: "https://obsidian.md/",
+      publish: true,
       tags: ["cross-platform"],
       placements: [
         { categorySlug: "knowledge-work", subcategorySlug: "notes-research" },
@@ -120,6 +124,7 @@ export const catalogSeed: CatalogSeed = {
       title: "LibreOffice",
       summary: "A free, open-source office productivity suite.",
       url: "https://www.libreoffice.org/",
+      publish: true,
       tags: ["open-source", "cross-platform"],
       placements: [{ categorySlug: "productivity", subcategorySlug: "office-suites" }],
     },
@@ -128,6 +133,7 @@ export const catalogSeed: CatalogSeed = {
       title: "Firefox",
       summary: "An independent web browser from Mozilla.",
       url: "https://www.mozilla.org/firefox/",
+      publish: true,
       tags: ["open-source", "cross-platform"],
       placements: [{ categorySlug: "utilities" }],
     },

@@ -12,12 +12,17 @@ export default async function ExplorePage() {
       <PageIntro
         eyebrow="Catalog gateway"
         title="Explore"
-        description="Browse the catalog structure and curated groups. Public Discovery listings appear here as they are intentionally published."
+        description="Browse categories and curated collections. Every resource shown in public listings is intentionally published."
       />
-      <p className="catalog-count">
-        {catalog.publishedDiscoveryCount} published{" "}
-        {catalog.publishedDiscoveryCount === 1 ? "Discovery" : "Discoveries"}
-      </p>
+      <div className="explore-toolbar">
+        <p className="catalog-count">
+          <strong>{catalog.publishedDiscoveryCount}</strong> published{" "}
+          {catalog.publishedDiscoveryCount === 1 ? "Discovery" : "Discoveries"}
+        </p>
+        <Link className="button-link" href="/search">
+          Search the catalog <span aria-hidden="true">→</span>
+        </Link>
+      </div>
       <div className="catalog-groups">
         <section className="catalog-group" aria-labelledby="categories-heading">
           <h2 id="categories-heading">Categories</h2>
@@ -25,11 +30,11 @@ export default async function ExplorePage() {
             <ul className="catalog-list">
               {catalog.categories.map((category) => (
                 <li key={category.id}>
-                  <Link href={`/categories/${category.slug}`}>
+                  <Link className="category-link" href={`/categories/${category.slug}`}>
                     {category.name}
                   </Link>
                   {category.subcategories.length > 0 && (
-                    <ul className="catalog-list">
+                    <ul className="subcategory-list">
                       {category.subcategories.map((subcategory) => (
                         <li key={subcategory.slug}>
                           <Link
@@ -63,6 +68,10 @@ export default async function ExplorePage() {
                   {collection.description && (
                     <p className="catalog-empty">{collection.description}</p>
                   )}
+                  <span className="catalog-item-count">
+                    {collection.publishedDiscoveryCount} published{" "}
+                    {collection.publishedDiscoveryCount === 1 ? "resource" : "resources"}
+                  </span>
                 </li>
               ))}
             </ul>

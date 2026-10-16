@@ -214,6 +214,7 @@ class MemorySeedRepository implements CatalogSeedRepository {
   readonly placements = new Set<string>();
   readonly discoveryTags = new Set<string>();
   readonly collectionDiscoveries = new Set<string>();
+  readonly publishedDiscoveries = new Set<string>();
   private nextId = 1;
 
   private upsert(
@@ -280,6 +281,10 @@ class MemorySeedRepository implements CatalogSeedRepository {
       `${input.collectionId}:${input.discoveryId}`,
     );
   }
+
+  async publishDiscovery(discoveryId: string): Promise<void> {
+    this.publishedDiscoveries.add(discoveryId);
+  }
 }
 
 describe("catalog seed", () => {
@@ -296,6 +301,7 @@ describe("catalog seed", () => {
       repository.placements.size,
       repository.discoveryTags.size,
       repository.collectionDiscoveries.size,
+      repository.publishedDiscoveries.size,
     ];
 
     await seedCatalog(repository);
@@ -308,6 +314,7 @@ describe("catalog seed", () => {
       repository.placements.size,
       repository.discoveryTags.size,
       repository.collectionDiscoveries.size,
+      repository.publishedDiscoveries.size,
     ];
 
     expect(secondCounts).toEqual(firstCounts);
@@ -315,6 +322,7 @@ describe("catalog seed", () => {
     expect(repository.subcategories.size).toBeGreaterThan(0);
     expect(repository.collections.size).toBeGreaterThanOrEqual(2);
     expect(repository.placements.size).toBeGreaterThan(5);
+    expect(repository.publishedDiscoveries.size).toBe(repository.discoveries.size);
     expect(
       repository.placements.has(
         `${repository.discoveries.get("obsidian")?.id}:${repository.categories.get("knowledge-work")?.id}:${repository.subcategories.get(`${repository.categories.get("knowledge-work")?.id}/notes-research`)?.id}`,

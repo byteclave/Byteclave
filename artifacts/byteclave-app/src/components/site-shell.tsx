@@ -1,33 +1,136 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { BrandMotion } from "./brand-motion";
 
 const navigation = [
+  { href: "/", label: "Home" },
   { href: "/explore", label: "Explore" },
   { href: "/search", label: "Search" },
   { href: "/self-host", label: "Self-host" },
 ];
 
 export function SiteShell({ children }: { children: ReactNode }) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+  const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const drawer = drawerRef.current;
+    drawer?.querySelector<HTMLElement>("a, button")?.focus();
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setDrawerOpen(false);
+        toggleRef.current?.focus();
+        return;
+      }
+      if (event.key !== "Tab" || !drawer) return;
+      const focusable = Array.from(drawer.querySelectorAll<HTMLElement>("a[href], button:not([disabled])"));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [drawerOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+    };
+  }, []);
+
+  function closeDrawer() {
+    setDrawerOpen(false);
+    toggleRef.current?.focus();
+  }
+
+  function beginNavigation() {
+    setTransitioning(true);
+    if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+    transitionTimeoutRef.current = setTimeout(() => setTransitioning(false), 700);
+  }
+
   return (
     <div className="site-shell">
       <a className="skip-link" href="#main-content">Skip to content</a>
       <header className="topbar">
         <Link className="brand-lockup" href="/" aria-label="ByteClave home">
-          <img src="/byteclave-logo.svg" alt="" />
+          <span className="brand-mark-small" aria-hidden="true">
+            <BrandMotion mode="INTRO" label="ByteClave logo" />
+          </span>
           <span className="brand-name">byte<span>clave</span></span>
         </Link>
-        <nav className="primary-nav" aria-label="Main navigation">
-          {navigation.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}
-        </nav>
-        <span className="header-mark" aria-hidden="true">OPEN DIRECTORY</span>
+        <button
+          ref={toggleRef}
+          className="menu-toggle"
+          type="button"
+          aria-expanded={drawerOpen}
+          aria-controls="site-navigation-drawer"
+          aria-label={drawerOpen ? "Close navigation menu" : "Open navigation menu"}
+          onClick={() => setDrawerOpen((open) => !open)}
+        >
+          <span className="menu-glyph" aria-hidden="true"><span /><span /></span>
+          <span>Menu</span>
+        </button>
+        {transitioning && (
+          <span className="transition-status" role="status">
+            <BrandMotion mode="TRANSITION" label="Navigating" />
+            <span>Opening</span>
+          </span>
+        )}
       </header>
+      {drawerOpen && (
+        <>
+          <button className="drawer-backdrop" type="button" aria-label="Close navigation menu" onClick={closeDrawer} />
+          <aside
+            ref={drawerRef}
+            id="site-navigation-drawer"
+            className="site-drawer"
+            aria-label="Site navigation"
+          >
+            <div className="drawer-heading">
+              <p>Navigate ByteClave</p>
+              <button className="drawer-close" type="button" aria-label="Close navigation menu" onClick={closeDrawer}>×</button>
+            </div>
+            <nav className="drawer-nav" aria-label="Main navigation">
+              {navigation.map((item, index) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={pathname === item.href ? "page" : undefined}
+                  onClick={() => {
+                    beginNavigation();
+                    setDrawerOpen(false);
+                  }}
+                >
+                  <span>0{index + 1}</span>{item.label}
+                </Link>
+              ))}
+            </nav>
+            <p className="drawer-note">An open catalog for digital resources.</p>
+          </aside>
+        </>
+      )}
       <main className="main-content" id="main-content">{children}</main>
       <footer className="site-footer">
         <p className="footer-copy">ByteClave · An open catalog for digital resources.</p>
         <nav className="footer-links" aria-label="Footer navigation">
           <Link href="/explore">Explore</Link>
-          <Link href="/self-host">Self-host</Link>
-          <Link href="/admin">Project status</Link>
+          <Link href="/search">Search</Link>
         </nav>
       </footer>
     </div>

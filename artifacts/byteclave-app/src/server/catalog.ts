@@ -1,2 +1,9 @@
 import "server-only";
-export { getExploreCatalog } from "@workspace/db";
+export {
+  getCategoryPageData,
+  getCollectionPageData,
+  getDiscoveryPageData,
+  getExploreCatalog,
+  getSubcategoryPageData,
+  searchPublishedDiscoveries,
+} from "@workspace/db";

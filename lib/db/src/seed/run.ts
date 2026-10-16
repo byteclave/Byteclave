@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { parseServerEnvironment } from "@workspace/config";
 import { seedCatalog } from "@workspace/domain/seed";
+import { transitionDiscovery } from "../services/publishing";
 import { getDb, getPool } from "../index";
 import {
   applicationSettings,
@@ -68,6 +69,7 @@ function firstOrThrow<T>(rows: T[] | undefined, label: string): T {
 }
 
 let databasePool: ReturnType<typeof getPool> | undefined;
+const queuedPublications = new Set<string>();
 
 async function main(): Promise<void> {
   const env = parseServerEnvironment();
@@ -228,8 +230,33 @@ async function main(): Promise<void> {
             set: { sortOrder: input.sortOrder },
           });
       },
+      async publishDiscovery(discoveryId) {
+        queuedPublications.add(discoveryId);
+      },
     });
   });
+
+  for (const discoveryId of queuedPublications) {
+    for (let step = 0; step < 3; step += 1) {
+      const [current] = await db
+        .select({ status: discoveries.status })
+        .from(discoveries)
+        .where(sql`${discoveries.id} = ${discoveryId}`)
+        .limit(1);
+      if (!current || current.status === "published") break;
+      const nextStatus =
+        current.status === "draft"
+          ? "review"
+          : current.status === "archived"
+            ? "draft"
+            : "published";
+      await transitionDiscovery({
+        discoveryId,
+        nextStatus,
+        note: "Development seed: publish a maintained catalog example.",
+      });
+    }
+  }
 
   process.stdout.write("Development roles and catalog examples seeded.\n");
 }
