@@ -84,7 +84,7 @@ h1, h2, h3, p { margin-top: 0; }
 h1, h2, h3 { color: var(--bc-blue); font-family: var(--font-display); line-height: 1.12; letter-spacing: -.04em; }
 h1 { max-width: 850px; margin-bottom: 20px; font-size: clamp(42px, 7vw, 76px); }
 h2 { font-size: clamp(28px, 4vw, 42px); }
-.lead { max-width: 650px; color: var(--bc-muted); font-size: clamp(17px, 2vw, 20px); line-height: 1.65; }
+.lead { max-width: 650px; color: var(--bc-text); font-size: clamp(17px, 2vw, 20px); line-height: 1.65; }
 .page-intro { padding: clamp(60px, 10vw, 120px) 0 50px; }
 .page-intro h1 { font-size: clamp(38px, 5.5vw, 62px); }
 .rule { height: 1px; border: 0; margin: 0; background: var(--bc-line); }
@@ -114,13 +114,13 @@ h2 { font-size: clamp(28px, 4vw, 42px); }
 .section { padding: 58px 0 76px; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
 .section-heading h2 { margin-bottom: 0; }
-.section-note { max-width: 430px; margin: 0; color: var(--bc-muted); font-size: 14px; }
+.section-note { max-width: 430px; margin: 0; color: var(--bc-text); font-size: 14px; }
 .principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--bc-line); }
 .principle { padding: 24px 26px 8px 0; }
 .principle + .principle { padding-left: 26px; border-left: 1px solid var(--bc-line); }
 .principle-index { margin-bottom: 22px; color: var(--bc-blue); font: 12px var(--font-mono); }
 .principle h3 { margin-bottom: 9px; font-size: 19px; letter-spacing: -.02em; }
-.principle p { max-width: 290px; margin-bottom: 0; color: var(--bc-muted); font-size: 14px; }
+.principle p { max-width: 290px; margin-bottom: 0; color: var(--bc-text); font-size: 14px; }
 .gateway {
   display: flex; align-items: center; justify-content: space-between; gap: 24px;
   padding: 27px 30px; border: 1px solid var(--bc-line); border-radius: var(--bc-radius); background: var(--bc-panel);

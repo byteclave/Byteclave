@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@workspace/config", "@workspace/domain", "@workspace/db"],
   allowedDevOrigins: [
     "*.replit.dev",
+    "*.riker.replit.dev",
     "*.replit.app",
     "*.repl.co",
     "localhost",

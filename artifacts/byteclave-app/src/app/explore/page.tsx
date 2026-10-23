@@ -1,8 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { PageIntro } from "../../components/site-shell";
 import { getExploreCatalog } from "../../server/catalog";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Explore",
+  description: "Browse ByteClave categories, subcategories, curated collections, and published digital resources.",
+  openGraph: { title: "Explore ByteClave" },
+};
 
 export default async function ExplorePage() {
   const catalog = await getExploreCatalog();
