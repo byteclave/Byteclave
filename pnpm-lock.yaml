@@ -223,6 +223,9 @@ importers:
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
+      '@workspace/domain':
+        specifier: workspace:*
+        version: link:../../lib/domain
       next:
         specifier: ^16.4.0
         version: 16.4.0(@types/node@25.9.6)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)

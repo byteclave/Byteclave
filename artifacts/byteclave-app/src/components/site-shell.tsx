@@ -9,6 +9,8 @@ const navigation = [
   { href: "/", label: "Home" },
   { href: "/explore", label: "Explore" },
   { href: "/search", label: "Search" },
+  { href: "/explore#categories", label: "Categories" },
+  { href: "/explore#collections", label: "Collections" },
   { href: "/self-host", label: "Self-host" },
 ];
 
@@ -52,6 +54,8 @@ export function SiteShell({ children }: { children: ReactNode }) {
       if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
     };
   }, []);
+
+  if (pathname?.startsWith("/admin")) return <>{children}</>;
 
   function closeDrawer() {
     setDrawerOpen(false);
@@ -121,6 +125,18 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 </Link>
               ))}
             </nav>
+            <div className="drawer-admin-entry">
+              <span>For administrators</span>
+              <Link
+                href="/admin/login"
+                onClick={() => {
+                  beginNavigation();
+                  setDrawerOpen(false);
+                }}
+              >
+                Admin Login
+              </Link>
+            </div>
             <p className="drawer-note">An open catalog for digital resources.</p>
           </aside>
         </>

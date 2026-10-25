@@ -11,7 +11,11 @@
   "scripts": {
     "generate": "drizzle-kit generate --config ./drizzle.config.ts",
     "migrate": "drizzle-kit migrate --config ./drizzle.config.ts",
-    "seed": "tsx ./src/seed/run.ts"
+    "seed": "tsx ./src/seed/run.ts",
+    "test": "tsx --test ./src/tests/*.test.ts",
+    "test:integration": "tsx --test ./src/tests/admin-guards.integration.test.ts",
+    "admin:bootstrap-owner": "tsx ./src/cli/owner.ts provision",
+    "admin:recover-owner": "tsx ./src/cli/owner.ts recover"
   },
   "dependencies": {
     "@workspace/config": "workspace:*",

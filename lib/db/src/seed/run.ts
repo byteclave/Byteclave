@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { parseServerEnvironment } from "@workspace/config";
+import { ROLE_PERMISSIONS } from "@workspace/domain";
 import { seedCatalog } from "@workspace/domain/seed";
 import { transitionDiscovery } from "../services/publishing";
 import { getDb, getPool } from "../index";
@@ -37,30 +38,18 @@ const roleDefinitions = [
 ] as const;
 
 const permissionDefinitions = [
+  ["admin:access", "Access the authenticated administrative dashboard."],
   ["catalog:read", "Read catalog records."],
   ["categories:manage", "Create and update categories and subcategories."],
   ["discoveries:manage", "Create and update Discovery records."],
   ["publishing:review", "Move content into or out of review."],
   ["publishing:publish", "Publish or archive reviewed content."],
   ["users:manage", "Manage user roles, subject to Owner protection."],
+  ["users:read", "Read administrative user accounts."],
   ["settings:manage", "Change application settings."],
+  ["security:manage", "Change security configuration."],
   ["audit:read", "Read audit history."],
 ] as const;
-
-const rolePermissionKeys = {
-  OWNER: permissionDefinitions.map(([key]) => key),
-  ADMIN: [
-    "catalog:read",
-    "categories:manage",
-    "discoveries:manage",
-    "publishing:review",
-    "publishing:publish",
-    "users:manage",
-    "settings:manage",
-    "audit:read",
-  ],
-  EDITOR: ["catalog:read", "discoveries:manage", "publishing:review"],
-} as const;
 
 function firstOrThrow<T>(rows: T[] | undefined, label: string): T {
   const row = rows?.[0];
@@ -102,7 +91,8 @@ async function main(): Promise<void> {
         },
       });
 
-    for (const [roleCode, permissionKeys] of Object.entries(rolePermissionKeys)) {
+    await tx.delete(rolePermissions);
+    for (const [roleCode, permissionKeys] of Object.entries(ROLE_PERMISSIONS)) {
       await tx
         .insert(rolePermissions)
         .values(

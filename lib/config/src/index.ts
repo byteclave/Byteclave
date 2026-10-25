@@ -12,6 +12,9 @@ const serverEnvironmentSchema = z.object({
     .email("INITIAL_OWNER_EMAIL must be a valid email address")
     .default("byteclave@gmail.com")
     .transform((email) => email.trim().toLowerCase()),
+  SESSION_SECRET: z
+    .string()
+    .min(32, "SESSION_SECRET must contain at least 32 characters"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 

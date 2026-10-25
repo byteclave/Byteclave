@@ -3,6 +3,7 @@ import {
   pgTable,
   primaryKey,
   text,
+  timestamp,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -16,6 +17,9 @@ export const users = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     email: text("email").notNull(),
     displayName: text("display_name").notNull(),
+    passwordHash: text("password_hash"),
+    disabledAt: timestamp("disabled_at", { withTimezone: true, mode: "date" }),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true, mode: "date" }),
     ...timestamps(),
   },
   (table) => [
@@ -53,6 +57,7 @@ export const userRoles = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.userId, table.roleCode] }),
+    uniqueIndex("user_roles_user_uidx").on(table.userId),
     index("user_roles_role_code_idx").on(table.roleCode),
   ],
 );

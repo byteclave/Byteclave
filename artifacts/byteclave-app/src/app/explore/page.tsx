@@ -30,7 +30,7 @@ export default async function ExplorePage() {
         </Link>
       </div>
       <div className="catalog-groups">
-        <section className="catalog-group" aria-labelledby="categories-heading">
+        <section id="categories" className="catalog-group" aria-labelledby="categories-heading">
           <h2 id="categories-heading">Categories</h2>
           {catalog.categories.length > 0 ? (
             <ul className="catalog-list">
@@ -62,7 +62,7 @@ export default async function ExplorePage() {
           )}
         </section>
 
-        <section className="catalog-group" aria-labelledby="collections-heading">
+        <section id="collections" className="catalog-group" aria-labelledby="collections-heading">
           <h2 id="collections-heading">Curated collections</h2>
           {catalog.collections.length > 0 ? (
             <ul className="catalog-list">
