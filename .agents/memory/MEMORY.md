@@ -1,1 +1,2 @@
 - [Next.js Turbopack on Replit](next-turbopack-replit.md) — use extensionless workspace imports and allow the loopback origin for preview HMR.
+- [ByteClave continuity](byteclave-continuity.md) — extend the existing ByteClave app and preserve its architecture and assets rather than restarting or duplicating systems.
