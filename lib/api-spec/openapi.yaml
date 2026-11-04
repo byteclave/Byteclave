@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Public ByteClave catalog and protected content management API.
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: public-catalog
+  - name: admin
+  - name: admin-content
 paths:
   /healthz:
     get:
@@ -24,7 +26,665 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /catalog/explore:
+    get:
+      operationId: getExploreCatalog
+      tags: [public-catalog]
+      summary: Get the public catalog index
+      responses:
+        "200":
+          description: Published catalog overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExploreCatalog"
+  /catalog/search:
+    get:
+      operationId: searchPublishedCatalog
+      tags: [public-catalog]
+      summary: Search published discoveries
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Matching published discoveries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Discovery"
+  /catalog/categories/{slug}:
+    get:
+      operationId: getPublicCategory
+      tags: [public-catalog]
+      summary: Get a published category and its root discoveries
+      parameters:
+        - $ref: "#/components/parameters/Slug"
+      responses:
+        "200":
+          description: Category catalog page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryPage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /catalog/categories/{categorySlug}/{subcategorySlug}:
+    get:
+      operationId: getPublicSubcategory
+      tags: [public-catalog]
+      summary: Get a published subcategory and its discoveries
+      parameters:
+        - name: categorySlug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: subcategorySlug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Subcategory catalog page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubcategoryPage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /catalog/collections/{slug}:
+    get:
+      operationId: getPublicCollection
+      tags: [public-catalog]
+      summary: Get a public collection
+      parameters:
+        - $ref: "#/components/parameters/Slug"
+      responses:
+        "200":
+          description: Collection catalog page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionPage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /catalog/discoveries/{slug}:
+    get:
+      operationId: getPublicDiscovery
+      tags: [public-catalog]
+      summary: Get a published discovery
+      parameters:
+        - $ref: "#/components/parameters/Slug"
+      responses:
+        "200":
+          description: Published discovery detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryPage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/session:
+    get:
+      operationId: getAdminSession
+      tags: [admin]
+      summary: Get the current admin session
+      responses:
+        "200":
+          description: Authenticated administrator
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/auth/login:
+    post:
+      operationId: loginAdmin
+      tags: [admin]
+      summary: Sign in to the administration area
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Sign in succeeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /admin/auth/logout:
+    post:
+      operationId: logoutAdmin
+      tags: [admin]
+      summary: Sign out of the administration area
+      security:
+        - AdminCookie: []
+      responses:
+        "200":
+          description: Sign out succeeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /admin/overview:
+    get:
+      operationId: getAdminOverview
+      tags: [admin-content]
+      summary: Get live catalog management metrics
+      security:
+        - AdminCookie: []
+      responses:
+        "200":
+          description: Current content metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOverview"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/catalog:
+    get:
+      operationId: getAdminCatalog
+      tags: [admin-content]
+      summary: List discoveries, taxonomy, tags, and collections
+      security:
+        - AdminCookie: []
+      responses:
+        "200":
+          description: Content management catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminCatalog"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/discoveries:
+    post:
+      operationId: createDiscovery
+      tags: [admin-content]
+      summary: Create a discovery or return an existing URL match
+      security:
+        - AdminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscoveryInput"
+      responses:
+        "201":
+          description: Discovery created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryWriteResult"
+        "200":
+          description: Existing URL match returned without duplication
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryWriteResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/discoveries/{id}:
+    patch:
+      operationId: updateDiscovery
+      tags: [admin-content]
+      summary: Edit a discovery and its placements
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiscoveryInput"
+      responses:
+        "200":
+          description: Updated discovery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscoveryWriteResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: deleteDiscovery
+      tags: [admin-content]
+      summary: Delete a discovery and its catalog relationships
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Discovery deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/categories:
+    post:
+      operationId: createCategory
+      tags: [admin-content]
+      summary: Create a category
+      security:
+        - AdminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/categories/{id}:
+    patch:
+      operationId: updateCategory
+      tags: [admin-content]
+      summary: Edit or reorder a category
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "200":
+          description: Updated category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: deleteCategory
+      tags: [admin-content]
+      summary: Delete an empty category
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Category deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/categories/{categoryId}/subcategories:
+    post:
+      operationId: createSubcategory
+      tags: [admin-content]
+      summary: Create a subcategory
+      security:
+        - AdminCookie: []
+      parameters:
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcategoryInput"
+      responses:
+        "201":
+          description: Subcategory created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subcategory"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/subcategories/{id}:
+    patch:
+      operationId: updateSubcategory
+      tags: [admin-content]
+      summary: Edit, reorder, or move a subcategory
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubcategoryInput"
+      responses:
+        "200":
+          description: Updated subcategory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subcategory"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: deleteSubcategory
+      tags: [admin-content]
+      summary: Delete a subcategory safely
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteSubcategoryInput"
+      responses:
+        "204":
+          description: Subcategory deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/tags:
+    post:
+      operationId: createTag
+      tags: [admin-content]
+      summary: Create or reuse a normalized tag
+      security:
+        - AdminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagInput"
+      responses:
+        "201":
+          description: Created or existing normalized tag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/tags/{id}:
+    patch:
+      operationId: updateTag
+      tags: [admin-content]
+      summary: Rename a tag
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagInput"
+      responses:
+        "200":
+          description: Updated tag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: deleteTag
+      tags: [admin-content]
+      summary: Delete a tag from all discoveries
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Tag deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/collections:
+    post:
+      operationId: createCollection
+      tags: [admin-content]
+      summary: Create a collection with ordered discoveries
+      security:
+        - AdminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionInput"
+      responses:
+        "201":
+          description: Collection created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/collections/{id}:
+    patch:
+      operationId: updateCollection
+      tags: [admin-content]
+      summary: Edit or reorder a collection
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionInput"
+      responses:
+        "200":
+          description: Updated collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: deleteCollection
+      tags: [admin-content]
+      summary: Delete a collection
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Collection deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
+  securitySchemes:
+    AdminCookie:
+      type: apiKey
+      in: cookie
+      name: byteclave_admin_session
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Slug:
+      name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Permission denied
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Record not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Duplicate or unsafe operation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RateLimited:
+      description: Too many attempts
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +693,312 @@ components:
           type: string
       required:
         - status
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    AdminLoginInput:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+      required: [email, password]
+    AdminSession:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        email: { type: string }
+        displayName: { type: string }
+        roles:
+          type: array
+          items: { type: string, enum: [OWNER, ADMIN, EDITOR] }
+        permissions:
+          type: array
+          items: { type: string }
+      required: [id, userId, email, displayName, roles, permissions]
+    AdminOverview:
+      type: object
+      properties:
+        discoveries: { type: integer }
+        publishedDiscoveries: { type: integer }
+        reviewDiscoveries: { type: integer }
+        draftDiscoveries: { type: integer }
+        archivedDiscoveries: { type: integer }
+        categories: { type: integer }
+        collections: { type: integer }
+        tags: { type: integer }
+      required: [discoveries, publishedDiscoveries, reviewDiscoveries, draftDiscoveries, archivedDiscoveries, categories, collections, tags]
+    Placement:
+      type: object
+      properties:
+        categoryId: { type: string }
+        categorySlug: { type: string }
+        categoryName: { type: string }
+        subcategoryId: { type: ["string", "null"] }
+        subcategorySlug: { type: ["string", "null"] }
+        subcategoryName: { type: ["string", "null"] }
+        sortOrder: { type: integer }
+      required: [categoryId, categorySlug, categoryName, subcategoryId, subcategorySlug, subcategoryName, sortOrder]
+    Tag:
+      type: object
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+      required: [id, slug, name]
+    Discovery:
+      type: object
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        title: { type: string }
+        url: { type: string }
+        summary: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        status: { type: string, enum: [draft, review, published, archived] }
+        tags:
+          type: array
+          items: { $ref: "#/components/schemas/Tag" }
+        placements:
+          type: array
+          items: { $ref: "#/components/schemas/Placement" }
+      required: [id, slug, title, url, summary, description, status, tags, placements]
+    DiscoveryInput:
+      type: object
+      properties:
+        slug: { type: string, maxLength: 120 }
+        title: { type: string, minLength: 1, maxLength: 180 }
+        url: { type: string, format: uri, maxLength: 4096 }
+        summary: { type: ["string", "null"], maxLength: 500 }
+        description: { type: ["string", "null"], maxLength: 10000 }
+        status: { type: string, enum: [draft, review, published, archived] }
+        tags:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 80 }
+          uniqueItems: true
+        placements:
+          type: array
+          items:
+            type: object
+            properties:
+              categoryId: { type: string, format: uuid }
+              subcategoryId: { type: ["string", "null"], format: uuid }
+              sortOrder: { type: integer, minimum: 0 }
+            required: [categoryId, subcategoryId, sortOrder]
+      required: [title, url, status, tags, placements]
+    DiscoveryWriteResult:
+      type: object
+      properties:
+        discovery: { $ref: "#/components/schemas/Discovery" }
+        created: { type: boolean }
+        duplicate: { type: boolean }
+      required: [discovery, created, duplicate]
+    Subcategory:
+      type: object
+      properties:
+        id: { type: string }
+        categoryId: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        sortOrder: { type: integer }
+        isVisible: { type: boolean }
+        discoveryCount: { type: integer }
+      required: [id, categoryId, slug, name, description, sortOrder, isVisible, discoveryCount]
+    Category:
+      type: object
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        sortOrder: { type: integer }
+        isVisible: { type: boolean }
+        subcategories:
+          type: array
+          items: { $ref: "#/components/schemas/Subcategory" }
+        discoveryCount: { type: integer }
+      required: [id, slug, name, description, sortOrder, isVisible, subcategories, discoveryCount]
+    CategoryInput:
+      type: object
+      properties:
+        slug: { type: string, maxLength: 120 }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: ["string", "null"], maxLength: 2000 }
+        sortOrder: { type: integer, minimum: 0, maximum: 100000 }
+        isVisible: { type: boolean }
+      required: [name, sortOrder, isVisible]
+    SubcategoryInput:
+      type: object
+      properties:
+        categoryId: { type: string, format: uuid }
+        slug: { type: string, maxLength: 120 }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: ["string", "null"], maxLength: 2000 }
+        sortOrder: { type: integer, minimum: 0, maximum: 100000 }
+        isVisible: { type: boolean }
+      required: [categoryId, name, sortOrder, isVisible]
+    DeleteSubcategoryInput:
+      type: object
+      properties:
+        moveDiscoveriesToCategoryRoot: { type: boolean }
+      required: [moveDiscoveriesToCategoryRoot]
+    TagInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+      required: [name]
+    Collection:
+      type: object
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        sortOrder: { type: integer }
+        discoveryIds:
+          type: array
+          items: { type: string }
+      required: [id, slug, name, description, sortOrder, discoveryIds]
+    CollectionInput:
+      type: object
+      properties:
+        slug: { type: string, maxLength: 120 }
+        name: { type: string, minLength: 1, maxLength: 160 }
+        description: { type: ["string", "null"], maxLength: 2000 }
+        sortOrder: { type: integer, minimum: 0, maximum: 100000 }
+        discoveryIds:
+          type: array
+          items: { type: string, format: uuid }
+          uniqueItems: true
+      required: [name, sortOrder, discoveryIds]
+    AdminCatalog:
+      type: object
+      properties:
+        discoveries:
+          type: array
+          items: { $ref: "#/components/schemas/Discovery" }
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/Category" }
+        tags:
+          type: array
+          items: { $ref: "#/components/schemas/Tag" }
+        collections:
+          type: array
+          items: { $ref: "#/components/schemas/Collection" }
+      required: [discoveries, categories, tags, collections]
+    ExploreCatalog:
+      type: object
+      properties:
+        categories:
+          type: array
+          items: { $ref: "#/components/schemas/PublicCategory" }
+        collections:
+          type: array
+          items: { $ref: "#/components/schemas/PublicCollection" }
+        publishedDiscoveryCount: { type: integer }
+      required: [categories, collections, publishedDiscoveryCount]
+    PublicCategory:
+      type: object
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        subcategories:
+          type: array
+          items: { $ref: "#/components/schemas/PublicSubcategory" }
+      required: [id, slug, name, description, subcategories]
+    PublicSubcategory:
+      type: object
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+      required: [id, slug, name, description]
+    PublicCollection:
+      type: object
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        publishedDiscoveryCount: { type: integer }
+      required: [slug, name, description, publishedDiscoveryCount]
+    CategoryPage:
+      type: object
+      properties:
+        category: { $ref: "#/components/schemas/PublicCategory" }
+        subcategories:
+          type: array
+          items: { $ref: "#/components/schemas/PublicSubcategory" }
+        discoveries:
+          type: array
+          items: { $ref: "#/components/schemas/Discovery" }
+      required: [category, subcategories, discoveries]
+    SubcategoryPage:
+      type: object
+      properties:
+        category:
+          type: object
+          properties:
+            slug: { type: string }
+            name: { type: string }
+          required: [slug, name]
+        subcategory: { $ref: "#/components/schemas/PublicSubcategory" }
+        discoveries:
+          type: array
+          items: { $ref: "#/components/schemas/Discovery" }
+      required: [category, subcategory, discoveries]
+    CollectionPage:
+      type: object
+      properties:
+        collection: { $ref: "#/components/schemas/PublicCollection" }
+        discoveries:
+          type: array
+          items: { $ref: "#/components/schemas/Discovery" }
+      required: [collection, discoveries]
+    DiscoveryPage:
+      type: object
+      properties:
+        discovery: { $ref: "#/components/schemas/Discovery" }
+        inspection:
+          anyOf:
+            - $ref: "#/components/schemas/InspectionDetails"
+            - type: "null"
+      required: [discovery, inspection]
+    InspectionDetails:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string }
+        inspector: { type: string }
+        inspectorVersion: { type: ["string", "null"] }
+        startedAt: { type: ["string", "null"], format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+        observations:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { type: string }
+              result: { type: string }
+              summary: { type: string }
+              details: { type: object, additionalProperties: true }
+            required: [code, result, summary, details]
+      required: [id, status, inspector, inspectorVersion, startedAt, completedAt, observations]
 

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ByteClave"
+description = "ByteClave is an open catalog of digital resources. Browse published discoveries by category, search the catalog, and curate resources through a protected admin dashboard."
+version = "1.0.0"
+id = "artifacts/byteclave-app"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21338
+
+[services.development]
+run = "pnpm --filter @workspace/byteclave-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/byteclave-app", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/byteclave-app/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21338"
+BASE_PATH = "/"

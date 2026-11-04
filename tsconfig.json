@@ -4,6 +4,12 @@
   "files": [],
   "references": [
     {
+      "path": "./lib/config"
+    },
+    {
+      "path": "./lib/domain"
+    },
+    {
       "path": "./lib/db"
     },
     {
