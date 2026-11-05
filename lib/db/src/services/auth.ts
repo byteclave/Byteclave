@@ -211,6 +211,7 @@ export async function authenticatePassword(
 
   const db = getDb();
   await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT set_config('app.actor_user_id', ${account.id}, true)`);
     await tx
       .update(users)
       .set({ lastLoginAt: new Date(), updatedAt: new Date() })
