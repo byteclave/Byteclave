@@ -1,0 +1,1 @@
+- [CMS integration test database](cms-integration-test-database.md) — run write-heavy CMS tests only against a separate disposable database.
