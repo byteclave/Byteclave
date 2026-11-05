@@ -230,6 +230,9 @@ importers:
       thread-stream:
         specifier: 3.1.0
         version: 3.1.0
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.15
 
   artifacts/byteclave-app:
     devDependencies:
@@ -350,6 +353,12 @@ importers:
       '@workspace/api-client-react':
         specifier: workspace:*
         version: link:../../lib/api-client-react
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../../lib/db
+      '@workspace/domain':
+        specifier: workspace:*
+        version: link:../../lib/domain
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1

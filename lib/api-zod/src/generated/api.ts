@@ -64,8 +64,7 @@ export const SearchPublishedCatalogResponseItem = zod.object({
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })),
   "placements": zod.array(zod.object({
   "categoryId": zod.string(),
@@ -117,8 +116,7 @@ export const GetPublicCategoryResponse = zod.object({
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })),
   "placements": zod.array(zod.object({
   "categoryId": zod.string(),
@@ -163,8 +161,7 @@ export const GetPublicSubcategoryResponse = zod.object({
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })),
   "placements": zod.array(zod.object({
   "categoryId": zod.string(),
@@ -204,8 +201,7 @@ export const GetPublicCollectionResponse = zod.object({
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })),
   "placements": zod.array(zod.object({
   "categoryId": zod.string(),
@@ -228,6 +224,7 @@ export const GetPublicDiscoveryParams = zod.object({
 })
 
 export const GetPublicDiscoveryResponse = zod.object({
+  "discovery": zod.object({
   "id": zod.string(),
   "slug": zod.string(),
   "title": zod.string(),
@@ -238,8 +235,7 @@ export const GetPublicDiscoveryResponse = zod.object({
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })),
   "placements": zod.array(zod.object({
   "categoryId": zod.string(),
@@ -250,6 +246,21 @@ export const GetPublicDiscoveryResponse = zod.object({
   "subcategoryName": zod.string().nullable(),
   "sortOrder": zod.number().int()
 }))
+}),
+  "inspection": zod.union([zod.object({
+  "id": zod.string(),
+  "status": zod.string(),
+  "inspector": zod.string(),
+  "inspectorVersion": zod.string().nullable(),
+  "startedAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "observations": zod.array(zod.object({
+  "code": zod.string(),
+  "result": zod.string(),
+  "summary": zod.string(),
+  "details": zod.record(zod.string(), zod.unknown())
+}))
+}),zod.null()])
 })
 
 
@@ -320,8 +331,7 @@ export const GetAdminCatalogResponse = zod.object({
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })),
   "placements": zod.array(zod.object({
   "categoryId": zod.string(),
@@ -355,8 +365,7 @@ export const GetAdminCatalogResponse = zod.object({
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })),
   "collections": zod.array(zod.object({
   "id": zod.string(),
@@ -415,8 +424,7 @@ export const CreateDiscoveryResponse = zod.object({
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })),
   "placements": zod.array(zod.object({
   "categoryId": zod.string(),
@@ -483,8 +491,7 @@ export const UpdateDiscoveryResponse = zod.object({
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })),
   "placements": zod.array(zod.object({
   "categoryId": zod.string(),
@@ -717,8 +724,7 @@ export const CreateTagBody = zod.object({
 export const CreateTagResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })
 
 
@@ -740,8 +746,7 @@ export const UpdateTagBody = zod.object({
 export const UpdateTagResponse = zod.object({
   "id": zod.string(),
   "slug": zod.string(),
-  "name": zod.string(),
-  "discoveryCount": zod.number().int()
+  "name": zod.string()
 })
 
 

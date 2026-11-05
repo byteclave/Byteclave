@@ -16,6 +16,7 @@ export async function getAdminOverviewMetrics() {
     [discoveryCount],
     [publishedCount],
     [unpublishedCount],
+    statusCounts,
     [categoryCount],
     [collectionCount],
     [tagCount],
@@ -30,6 +31,10 @@ export async function getAdminOverviewMetrics() {
       .select({ total: count() })
       .from(discoveries)
       .where(inArray(discoveries.status, ["draft", "review", "archived"])),
+    db
+      .select({ status: discoveries.status, total: count() })
+      .from(discoveries)
+      .groupBy(discoveries.status),
     db.select({ total: count() }).from(categories),
     db.select({ total: count() }).from(collections),
     db.select({ total: count() }).from(tags),
@@ -38,9 +43,14 @@ export async function getAdminOverviewMetrics() {
       .from(userRoles)
       .where(inArray(userRoles.roleCode, ["OWNER", "ADMIN"])),
   ]);
+  const countFor = (status: "draft" | "review" | "archived") =>
+    statusCounts.find((entry) => entry.status === status)?.total ?? 0;
   return {
     discoveries: discoveryCount?.total ?? 0,
     publishedDiscoveries: publishedCount?.total ?? 0,
+    reviewDiscoveries: countFor("review"),
+    draftDiscoveries: countFor("draft"),
+    archivedDiscoveries: countFor("archived"),
     unpublishedDiscoveries: unpublishedCount?.total ?? 0,
     categories: categoryCount?.total ?? 0,
     collections: collectionCount?.total ?? 0,

@@ -1,6 +1,8 @@
 import type { listAdminAuditEvents } from "@workspace/db";
 
-type AuditEvent = Awaited<ReturnType<typeof listAdminAuditEvents>>[number];
+type AuditEvent = Omit<Awaited<ReturnType<typeof listAdminAuditEvents>>[number], "createdAt"> & {
+  createdAt: string | Date;
+};
 
 export function AdminAuditTable({ events }: { events: AuditEvent[] }) {
   if (!events.length) return <p className="admin-empty">No administrative events are recorded yet.</p>;
@@ -22,7 +24,7 @@ export function AdminAuditTable({ events }: { events: AuditEvent[] }) {
               <td><strong>{event.action}</strong></td>
               <td>{event.actorEmail ?? "System recovery"}</td>
               <td>{event.entityType} · <code>{event.entityId.slice(0, 8)}</code></td>
-              <td>{new Date(event.createdAt).toLocaleString()}</td>
+              <td>{new Date(typeof event.createdAt === "string" ? event.createdAt : event.createdAt.toISOString()).toLocaleString()}</td>
               <td><code>{JSON.stringify(event.changes)}</code></td>
             </tr>
           ))}

@@ -25,9 +25,11 @@ export async function getExploreCatalog() {
         .orderBy(asc(categories.sortOrder), asc(categories.name)),
       database
         .select({
+          id: subcategories.id,
           categoryId: subcategories.categoryId,
           slug: subcategories.slug,
           name: subcategories.name,
+          description: subcategories.description,
         })
         .from(subcategories)
         .where(eq(subcategories.isVisible, true))
@@ -68,7 +70,12 @@ export async function getExploreCatalog() {
       ...category,
       subcategories: subcategoryRows
         .filter((subcategory) => subcategory.categoryId === category.id)
-        .map(({ slug, name }) => ({ slug, name })),
+        .map(({ id, slug, name, description }) => ({
+          id,
+          slug,
+          name,
+          description,
+        })),
     })),
     collections: collectionRows,
     publishedDiscoveryCount: publishedRows[0]?.value ?? 0,

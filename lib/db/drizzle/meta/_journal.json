@@ -15,6 +15,13 @@
       "when": 1792936089648,
       "tag": "0001_dear_blockbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793873729214,
+      "tag": "0002_tidy_bedlam",
+      "breakpoints": true
     }
   ]
 }

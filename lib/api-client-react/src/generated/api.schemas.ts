@@ -69,7 +69,6 @@ export interface Tag {
   id: string;
   slug: string;
   name: string;
-  discoveryCount: number;
 }
 
 export type DiscoveryStatus = typeof DiscoveryStatus[keyof typeof DiscoveryStatus];
@@ -317,6 +316,33 @@ export interface SubcategoryPage {
 export interface CollectionPage {
   collection: PublicCollection;
   discoveries: Discovery[];
+}
+
+export type InspectionDetailsObservationsItemDetails = { [key: string]: unknown };
+
+export type InspectionDetailsObservationsItem = {
+  code: string;
+  result: string;
+  summary: string;
+  details: InspectionDetailsObservationsItemDetails;
+};
+
+export interface InspectionDetails {
+  id: string;
+  status: string;
+  inspector: string;
+  /** @nullable */
+  inspectorVersion: string | null;
+  /** @nullable */
+  startedAt: string | null;
+  /** @nullable */
+  completedAt: string | null;
+  observations: InspectionDetailsObservationsItem[];
+}
+
+export interface DiscoveryPage {
+  discovery: Discovery;
+  inspection: InspectionDetails | null;
 }
 
 /**

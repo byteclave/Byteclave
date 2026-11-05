@@ -10,7 +10,13 @@
   "include": ["src"],
   "references": [
     {
+      "path": "../../lib/config"
+    },
+    {
       "path": "../../lib/db"
+    },
+    {
+      "path": "../../lib/domain"
     },
     {
       "path": "../../lib/api-zod"

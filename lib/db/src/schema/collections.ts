@@ -20,7 +20,7 @@ export const collections = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
     ...timestamps(),
   },
-  (table) => [index("collections_sort_name_idx").on(table.sortOrder, table.name)],
+  (table) => [index("collections_name_idx").on(table.name)],
 );
 
 export const collectionDiscoveries = pgTable(

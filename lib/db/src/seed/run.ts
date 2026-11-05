@@ -177,12 +177,17 @@ async function main(): Promise<void> {
         return firstOrThrow(rows, `discovery "${input.slug}"`);
       },
       async upsertTag(input) {
+        const normalizedName = input.name
+          .normalize("NFKC")
+          .trim()
+          .replace(/\s+/gu, " ")
+          .toLocaleLowerCase("en-US");
         const rows = await tx
           .insert(tags)
-          .values(input)
+          .values({ ...input, normalizedName })
           .onConflictDoUpdate({
             target: tags.slug,
-            set: { name: input.name, updatedAt: new Date() },
+            set: { name: input.name, normalizedName, updatedAt: new Date() },
           })
           .returning({ id: tags.id, slug: tags.slug });
         return firstOrThrow(rows, `tag "${input.slug}"`);

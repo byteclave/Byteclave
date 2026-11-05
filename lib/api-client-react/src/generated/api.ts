@@ -40,6 +40,7 @@ import type {
   DeleteSubcategoryInput,
   Discovery,
   DiscoveryInput,
+  DiscoveryPage,
   DiscoveryWriteResult,
   ExploreCatalog,
   ForbiddenResponse,
@@ -716,9 +717,9 @@ export const getGetPublicDiscoveryUrl = (slug: string,) => {
 /**
  * @summary Get a published discovery
  */
-export const getPublicDiscovery = async (slug: string, options?: Parameters<typeof customFetch>[1]): Promise<Discovery> => {
+export const getPublicDiscovery = async (slug: string, options?: Parameters<typeof customFetch>[1]): Promise<DiscoveryPage> => {
 
-  return customFetch<Discovery>(getGetPublicDiscoveryUrl(slug),
+  return customFetch<DiscoveryPage>(getGetPublicDiscoveryUrl(slug),
   {
     ...options,
     method: 'GET'
