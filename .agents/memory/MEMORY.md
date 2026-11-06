@@ -1,1 +1,2 @@
 - [CMS integration test database](cms-integration-test-database.md) — run write-heavy CMS tests only against a separate disposable database.
+- [Database actor context](database-actor-context.md) — set `app.actor_user_id` transaction-locally after authentication before protected self-updates.
