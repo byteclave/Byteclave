@@ -54,7 +54,10 @@ export const mediaUploadRequestSchema = z
       .trim()
       .min(1)
       .max(180)
-      .regex(/^[^/\\\u0000-\u001f\u007f]+$/u, "Use a filename without folders or control characters."),
+      .regex(
+        /^(?!\.)(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._ ()-]*$/u,
+        "Use a plain filename without folders or special characters.",
+      ),
     contentType: z.enum([
       "image/png",
       "image/jpeg",
@@ -79,6 +82,11 @@ export const mediaUploadRequestSchema = z
       });
     }
   });
+
+export const mediaAssignmentSchema = z.object({
+  discoveryId: z.string().uuid().nullable(),
+  altText: z.string().trim().max(500).nullable(),
+});
 
 export const appearanceSettingsSchema = z.object({
   homepageEyebrow: z.string().trim().min(1).max(120),
