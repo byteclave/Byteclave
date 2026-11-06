@@ -5,7 +5,6 @@
  * Public ByteClave catalog and protected content management API.
  * OpenAPI spec version: 0.1.0
  */
-import type { DiscoveryStatus } from './discoveryStatus';
 import type { Placement } from './placement';
 import type { Tag } from './tag';
 
@@ -18,7 +17,6 @@ export interface Discovery {
   summary: string | null;
   /** @nullable */
   description: string | null;
-  status: DiscoveryStatus;
   tags: Tag[];
   placements: Placement[];
 }

@@ -2,6 +2,7 @@ export * from "./audit";
 export * from "./auth";
 export * from "./collections";
 export * from "./content";
+export * from "./content-versions";
 export * from "./discoveries";
 export * from "./enums";
 export * from "./media-inspections";

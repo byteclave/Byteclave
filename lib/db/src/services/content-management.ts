@@ -1,10 +1,13 @@
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import {
-  assertPublishingTransition,
   normalizeResourceUrl,
   slugSchema,
   type PublishingStatus,
 } from "@workspace/domain";
+import {
+  assertPublishingTransition,
+  getAllowedPublishingTransitions,
+} from "@workspace/domain/services";
 import { getDb } from "../index";
 import { getAdminCatalog } from "../queries/admin-catalog";
 import {
@@ -15,6 +18,7 @@ import {
   discoveries,
   discoveryPlacements,
   discoveryTags,
+  entityContentVersions,
   publishingRecords,
   subcategories,
   tags,
@@ -53,7 +57,6 @@ type DiscoveryInput = {
   url: string;
   summary?: string | null;
   description?: string | null;
-  status: PublishingStatus;
   tags: string[];
   placements: PlacementInput[];
 };
@@ -256,15 +259,171 @@ async function recordAudit(
     entityId: string;
     action: string;
     changes?: Record<string, unknown>;
+    sourceVersionId?: string;
   },
 ): Promise<void> {
+  const versionEntityTypes = new Set([
+    "discovery",
+    "category",
+    "subcategory",
+    "tag",
+    "collection",
+  ]);
+  const actionName = input.action.split(".").at(-1);
+  const versionAction =
+    actionName === "created" || actionName === "deleted" ||
+    actionName === "restored" || actionName === "updated"
+      ? actionName
+      : null;
+  let changes = input.changes ?? {};
+  if (versionAction && versionEntityTypes.has(input.entityType)) {
+    const snapshot = await readContentSnapshot(
+      tx,
+      input.entityType,
+      input.entityId,
+    );
+    if (snapshot) {
+      const [previous] = await tx
+        .select({ snapshot: entityContentVersions.snapshot })
+        .from(entityContentVersions)
+        .where(
+          and(
+            eq(entityContentVersions.entityType, input.entityType),
+            eq(entityContentVersions.entityId, input.entityId),
+          ),
+        )
+        .orderBy(desc(entityContentVersions.createdAt))
+        .limit(1);
+      const before =
+        Object.prototype.hasOwnProperty.call(input.changes ?? {}, "before")
+          ? input.changes?.before ?? null
+          : versionAction === "created"
+            ? null
+            : versionAction === "deleted"
+              ? snapshot
+              : previous?.snapshot ?? null;
+      const after = versionAction === "deleted" ? null : snapshot;
+      await tx.insert(entityContentVersions).values({
+        entityType: input.entityType,
+        entityId: input.entityId,
+        action: versionAction,
+        snapshot,
+        sourceVersionId: input.sourceVersionId ?? null,
+        actorUserId: input.actorUserId,
+      });
+      changes = { ...changes, before, after };
+    }
+  }
   await tx.insert(auditLogs).values({
     actorUserId: input.actorUserId,
     entityType: input.entityType,
     entityId: input.entityId,
     action: input.action,
-    changes: input.changes ?? {},
+    changes,
   });
+}
+
+async function readContentSnapshot(
+  tx: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0],
+  entityType: string,
+  entityId: string,
+): Promise<Record<string, unknown> | null> {
+  if (entityType === "discovery") {
+    const [row] = await tx
+      .select()
+      .from(discoveries)
+      .where(eq(discoveries.id, entityId))
+      .limit(1);
+    if (!row) return null;
+    const [tagRows, placementRows] = await Promise.all([
+      tx
+        .select({
+          id: tags.id,
+          slug: tags.slug,
+          name: tags.name,
+        })
+        .from(discoveryTags)
+        .innerJoin(tags, eq(discoveryTags.tagId, tags.id))
+        .where(eq(discoveryTags.discoveryId, entityId))
+        .orderBy(asc(tags.name)),
+      tx
+        .select({
+          categoryId: discoveryPlacements.categoryId,
+          subcategoryId: discoveryPlacements.subcategoryId,
+          sortOrder: discoveryPlacements.sortOrder,
+        })
+        .from(discoveryPlacements)
+        .where(eq(discoveryPlacements.discoveryId, entityId))
+        .orderBy(asc(discoveryPlacements.sortOrder)),
+    ]);
+    return { ...row, tags: tagRows, placements: placementRows };
+  }
+  if (entityType === "category") {
+    const [row] = await tx
+      .select()
+      .from(categories)
+      .where(eq(categories.id, entityId))
+      .limit(1);
+    if (!row) return null;
+    const children = await tx
+      .select()
+      .from(subcategories)
+      .where(eq(subcategories.categoryId, entityId))
+      .orderBy(asc(subcategories.sortOrder), asc(subcategories.name));
+    return { ...row, subcategories: children };
+  }
+  if (entityType === "subcategory") {
+    const [row] = await tx
+      .select()
+      .from(subcategories)
+      .where(eq(subcategories.id, entityId))
+      .limit(1);
+    if (!row) return null;
+    const placements = await tx
+      .select({
+        discoveryId: discoveryPlacements.discoveryId,
+        sortOrder: discoveryPlacements.sortOrder,
+      })
+      .from(discoveryPlacements)
+      .where(eq(discoveryPlacements.subcategoryId, entityId))
+      .orderBy(asc(discoveryPlacements.sortOrder));
+    return { ...row, placements };
+  }
+  if (entityType === "tag") {
+    const [row] = await tx
+      .select()
+      .from(tags)
+      .where(eq(tags.id, entityId))
+      .limit(1);
+    if (!row) return null;
+    const linkedDiscoveries = await tx
+      .select({ discoveryId: discoveryTags.discoveryId })
+      .from(discoveryTags)
+      .where(eq(discoveryTags.tagId, entityId))
+      .orderBy(asc(discoveryTags.discoveryId));
+    return {
+      ...row,
+      discoveryIds: linkedDiscoveries.map(({ discoveryId }) => discoveryId),
+    };
+  }
+  if (entityType === "collection") {
+    const [row] = await tx
+      .select()
+      .from(collections)
+      .where(eq(collections.id, entityId))
+      .limit(1);
+    if (!row) return null;
+    const members = await tx
+      .select({
+        discoveryId: collectionDiscoveries.discoveryId,
+        sortOrder: collectionDiscoveries.sortOrder,
+      })
+      .from(collectionDiscoveries)
+      .where(eq(collectionDiscoveries.collectionId, entityId))
+      .orderBy(asc(collectionDiscoveries.sortOrder));
+    return { ...row, discoveries: members };
+  }
+  return null;
 }
 
 async function getDiscoveryWriteResult(
@@ -327,32 +486,12 @@ export async function createDiscovery(
       await replaceDiscoveryTags(tx, created.id, rawInput.tags);
       await replaceDiscoveryPlacements(tx, created.id, rawInput.placements);
 
-      if (rawInput.status !== "draft") {
-        assertPublishingTransition("draft", rawInput.status);
-        if (rawInput.status === "published") {
-          throw new InvalidContentError(
-            "New discoveries must first be saved as draft or review before they can be published.",
-          );
-        }
-        await tx
-          .update(discoveries)
-          .set({ status: rawInput.status, updatedAt: new Date() })
-          .where(eq(discoveries.id, created.id));
-        await tx.insert(publishingRecords).values({
-          discoveryId: created.id,
-          fromStatus: "draft",
-          toStatus: rawInput.status,
-          actorUserId,
-          note: null,
-        });
-      }
-
       await recordAudit(tx, {
         actorUserId,
         entityType: "discovery",
         entityId: created.id,
         action: "content.discovery.created",
-        changes: { slug, status: rawInput.status, normalizedUrl },
+        changes: { slug, status: "draft", normalizedUrl },
       });
       return created.id;
     });
@@ -374,8 +513,6 @@ export async function updateDiscovery(
       .select({
         id: discoveries.id,
         slug: discoveries.slug,
-        status: discoveries.status,
-        normalizedUrl: discoveries.normalizedUrl,
       })
       .from(discoveries)
       .where(eq(discoveries.id, id))
@@ -411,15 +548,6 @@ export async function updateDiscovery(
         )
       : current.slug;
 
-    if (rawInput.status !== current.status) {
-      assertPublishingTransition(current.status, rawInput.status);
-      if (rawInput.status === "published" && current.status !== "review") {
-        throw new InvalidContentError(
-          "Move the discovery to review before publishing it.",
-        );
-      }
-    }
-
     await tx
       .update(discoveries)
       .set({
@@ -429,22 +557,12 @@ export async function updateDiscovery(
         normalizedUrl: url,
         summary: optionalText(rawInput.summary),
         description: optionalText(rawInput.description),
-        status: rawInput.status,
         updatedAt: new Date(),
       })
       .where(eq(discoveries.id, id));
     await replaceDiscoveryTags(tx, id, rawInput.tags);
     await replaceDiscoveryPlacements(tx, id, rawInput.placements);
 
-    if (rawInput.status !== current.status) {
-      await tx.insert(publishingRecords).values({
-        discoveryId: id,
-        fromStatus: current.status,
-        toStatus: rawInput.status,
-        actorUserId,
-        note: null,
-      });
-    }
     await recordAudit(tx, {
       actorUserId,
       entityType: "discovery",
@@ -452,7 +570,6 @@ export async function updateDiscovery(
       action: "content.discovery.updated",
       changes: {
         slug,
-        status: rawInput.status,
         normalizedUrl: url,
       },
     });
@@ -593,6 +710,19 @@ export async function deleteCategory(id: string, actorUserId: string) {
       );
     }
 
+    const children = await tx
+      .select({ id: subcategories.id, slug: subcategories.slug })
+      .from(subcategories)
+      .where(eq(subcategories.categoryId, id));
+    for (const child of children) {
+      await recordAudit(tx, {
+        actorUserId,
+        entityType: "subcategory",
+        entityId: child.id,
+        action: "content.subcategory.deleted",
+        changes: { slug: child.slug, parentCategoryDeleted: true },
+      });
+    }
     await recordAudit(tx, {
       actorUserId,
       entityType: "category",
@@ -790,6 +920,17 @@ export async function deleteSubcategory(
       })
       .from(discoveryPlacements)
       .where(eq(discoveryPlacements.subcategoryId, id));
+    await recordAudit(tx, {
+      actorUserId,
+      entityType: "subcategory",
+      entityId: id,
+      action: "content.subcategory.deleted",
+      changes: {
+        slug: subcategory.slug,
+        movedToCategoryRoot: moveDiscoveriesToCategoryRoot,
+        movedDiscoveryCount: placements.length,
+      },
+    });
     if (placements.length > 0 && !moveDiscoveriesToCategoryRoot) {
       throw new ContentConflictError(
         "Choose “move to category” to keep these discoveries, or remove their placements first.",
@@ -811,17 +952,6 @@ export async function deleteSubcategory(
         )
         .onConflictDoNothing();
     }
-    await recordAudit(tx, {
-      actorUserId,
-      entityType: "subcategory",
-      entityId: id,
-      action: "content.subcategory.deleted",
-      changes: {
-        slug: subcategory.slug,
-        movedToCategoryRoot: moveDiscoveriesToCategoryRoot,
-        movedDiscoveryCount: placements.length,
-      },
-    });
     await tx.delete(subcategories).where(eq(subcategories.id, id));
   });
 }
@@ -1057,5 +1187,410 @@ export async function deleteCollection(id: string, actorUserId: string) {
       changes: { slug: collection.slug },
     });
     await tx.delete(collections).where(eq(collections.id, id));
+  });
+}
+
+function snapshotRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new InvalidContentError("The saved content version is malformed.");
+  }
+  return value as Record<string, unknown>;
+}
+
+function snapshotText(
+  snapshot: Record<string, unknown>,
+  key: string,
+  maxLength: number,
+): string {
+  const value = snapshot[key];
+  if (typeof value !== "string" || !value.trim() || value.length > maxLength) {
+    throw new InvalidContentError(`The saved version has an invalid ${key} field.`);
+  }
+  return value.trim();
+}
+
+function snapshotNullableText(
+  snapshot: Record<string, unknown>,
+  key: string,
+  maxLength: number,
+): string | null {
+  const value = snapshot[key];
+  if (value == null) return null;
+  if (typeof value !== "string" || value.length > maxLength) {
+    throw new InvalidContentError(`The saved version has an invalid ${key} field.`);
+  }
+  return value.trim() || null;
+}
+
+function snapshotInteger(
+  snapshot: Record<string, unknown>,
+  key: string,
+  minimum = 0,
+  maximum = 100_000,
+): number {
+  const value = snapshot[key];
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < minimum ||
+    value > maximum
+  ) {
+    throw new InvalidContentError(`The saved version has an invalid ${key} field.`);
+  }
+  return value;
+}
+
+function snapshotArray(value: unknown, label: string): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    throw new InvalidContentError(`The saved version has invalid ${label}.`);
+  }
+  return value.map(snapshotRecord);
+}
+
+function snapshotStringArray(value: unknown, label: string): string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+    throw new InvalidContentError(`The saved version has invalid ${label}.`);
+  }
+  return value as string[];
+}
+
+function publishingPath(
+  from: PublishingStatus,
+  to: PublishingStatus,
+): PublishingStatus[] {
+  if (from === to) return [];
+  const queue: Array<{ status: PublishingStatus; path: PublishingStatus[] }> = [
+    { status: from, path: [] },
+  ];
+  const visited = new Set<PublishingStatus>([from]);
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    for (const next of getAllowedPublishingTransitions(current.status)) {
+      if (visited.has(next)) continue;
+      const path = [...current.path, next];
+      if (next === to) return path;
+      visited.add(next);
+      queue.push({ status: next, path });
+    }
+  }
+  throw new InvalidContentError(`Cannot restore content from ${from} to ${to}.`);
+}
+
+export async function restoreContentVersion(
+  versionId: string,
+  actorUserId: string,
+) {
+  return getDb().transaction(async (tx) => {
+    const [version] = await tx
+      .select()
+      .from(entityContentVersions)
+      .where(eq(entityContentVersions.id, versionId))
+      .for("update")
+      .limit(1);
+    if (!version) throw new ContentNotFoundError("The selected version was not found.");
+    const snapshot = snapshotRecord(version.snapshot);
+    const entityType = version.entityType;
+    const entityId = version.entityId;
+    const before = await readContentSnapshot(tx, entityType, entityId);
+
+    if (entityType === "discovery") {
+      const slug = slugSchema.parse(snapshotText(snapshot, "slug", 120));
+      const title = snapshotText(snapshot, "title", 180);
+      const url = normalizeResourceUrl(snapshotText(snapshot, "url", 4096));
+      const summary = snapshotNullableText(snapshot, "summary", 500);
+      const description = snapshotNullableText(snapshot, "description", 10_000);
+      const tagsInput = snapshotArray(snapshot.tags, "tags").map((tag) =>
+        snapshotText(tag, "name", 80),
+      );
+      const placementInput = snapshotArray(snapshot.placements, "placements").map(
+        (placement) => {
+          const categoryId = snapshotText(placement, "categoryId", 64);
+          const subcategoryId = placement.subcategoryId;
+          if (subcategoryId !== null && typeof subcategoryId !== "string") {
+            throw new InvalidContentError("The saved version has an invalid placement.");
+          }
+          return {
+            categoryId,
+            subcategoryId: subcategoryId as string | null,
+            sortOrder: snapshotInteger(placement, "sortOrder"),
+          };
+        },
+      );
+      const rawStatus = snapshot.status;
+      if (!["draft", "review", "published", "archived"].includes(String(rawStatus))) {
+        throw new InvalidContentError("The saved version has an invalid publishing status.");
+      }
+      const targetStatus = rawStatus as PublishingStatus;
+      const [existing] = await tx
+        .select({ status: discoveries.status })
+        .from(discoveries)
+        .where(eq(discoveries.id, entityId))
+        .for("update")
+        .limit(1);
+      const [slugOwner] = await tx
+        .select({ id: discoveries.id })
+        .from(discoveries)
+        .where(and(eq(discoveries.slug, slug), ne(discoveries.id, entityId)))
+        .limit(1);
+      const [urlOwner] = await tx
+        .select({ id: discoveries.id })
+        .from(discoveries)
+        .where(and(eq(discoveries.normalizedUrl, url), ne(discoveries.id, entityId)))
+        .limit(1);
+      if (slugOwner || urlOwner) {
+        throw new ContentConflictError(
+          "The selected version conflicts with another discovery’s slug or canonical URL.",
+        );
+      }
+      const initialStatus = existing?.status ?? "draft";
+      if (existing) {
+        await tx
+          .update(discoveries)
+          .set({
+            slug,
+            title,
+            url,
+            normalizedUrl: url,
+            summary,
+            description,
+            updatedAt: new Date(),
+          })
+          .where(eq(discoveries.id, entityId));
+      } else {
+        await tx.insert(discoveries).values({
+          id: entityId,
+          slug,
+          title,
+          url,
+          normalizedUrl: url,
+          summary,
+          description,
+          status: "draft",
+          createdByUserId: actorUserId,
+        });
+      }
+      await replaceDiscoveryTags(tx, entityId, tagsInput);
+      await replaceDiscoveryPlacements(tx, entityId, placementInput);
+      let currentStatus = initialStatus;
+      for (const nextStatus of publishingPath(currentStatus, targetStatus)) {
+        assertPublishingTransition(currentStatus, nextStatus);
+        await tx
+          .update(discoveries)
+          .set({ status: nextStatus, updatedAt: new Date() })
+          .where(eq(discoveries.id, entityId));
+        await tx.insert(publishingRecords).values({
+          discoveryId: entityId,
+          fromStatus: currentStatus,
+          toStatus: nextStatus,
+          actorUserId,
+          note: `Restored from content version ${version.id}.`,
+        });
+        await tx.insert(auditLogs).values({
+          actorUserId,
+          entityType: "discovery",
+          entityId,
+          action: `publishing.discovery.${nextStatus}`,
+          changes: {
+            before: { status: currentStatus },
+            after: { status: nextStatus },
+            sourceVersionId: version.id,
+          },
+        });
+        currentStatus = nextStatus;
+      }
+    } else if (entityType === "category") {
+      const slug = slugSchema.parse(snapshotText(snapshot, "slug", 120));
+      const name = snapshotText(snapshot, "name", 120);
+      const description = snapshotNullableText(snapshot, "description", 2000);
+      const sortOrder = snapshotInteger(snapshot, "sortOrder");
+      if (typeof snapshot.isVisible !== "boolean") {
+        throw new InvalidContentError("The saved version has an invalid visibility setting.");
+      }
+      const [owner] = await tx
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(eq(categories.slug, slug), ne(categories.id, entityId)))
+        .limit(1);
+      if (owner) throw new ContentConflictError("That category slug is already in use.");
+      const [existing] = await tx
+        .select({ id: categories.id })
+        .from(categories)
+        .where(eq(categories.id, entityId))
+        .limit(1);
+      const values = {
+        slug,
+        name,
+        description,
+        sortOrder,
+        isVisible: snapshot.isVisible,
+        updatedAt: new Date(),
+      };
+      if (existing) {
+        await tx.update(categories).set(values).where(eq(categories.id, entityId));
+      } else {
+        await tx.insert(categories).values({ id: entityId, ...values });
+      }
+    } else if (entityType === "subcategory") {
+      const categoryId = snapshotText(snapshot, "categoryId", 64);
+      const slug = slugSchema.parse(snapshotText(snapshot, "slug", 120));
+      const name = snapshotText(snapshot, "name", 120);
+      const description = snapshotNullableText(snapshot, "description", 2000);
+      const sortOrder = snapshotInteger(snapshot, "sortOrder");
+      if (typeof snapshot.isVisible !== "boolean") {
+        throw new InvalidContentError("The saved version has an invalid visibility setting.");
+      }
+      const [category] = await tx
+        .select({ id: categories.id })
+        .from(categories)
+        .where(eq(categories.id, categoryId))
+        .limit(1);
+      if (!category) {
+        throw new ContentConflictError("Restore the parent category before this subcategory.");
+      }
+      const [owner] = await tx
+        .select({ id: subcategories.id })
+        .from(subcategories)
+        .where(
+          and(
+            eq(subcategories.categoryId, categoryId),
+            eq(subcategories.slug, slug),
+            ne(subcategories.id, entityId),
+          ),
+        )
+        .limit(1);
+      if (owner) throw new ContentConflictError("That subcategory slug is already in use.");
+      const [existing] = await tx
+        .select({ id: subcategories.id })
+        .from(subcategories)
+        .where(eq(subcategories.id, entityId))
+        .limit(1);
+      const values = {
+        categoryId,
+        slug,
+        name,
+        description,
+        sortOrder,
+        isVisible: snapshot.isVisible,
+      };
+      if (existing) {
+        await tx
+          .update(subcategories)
+          .set({ ...values, updatedAt: new Date() })
+          .where(eq(subcategories.id, entityId));
+      } else {
+        await tx.insert(subcategories).values({ id: entityId, ...values });
+      }
+      await tx
+        .delete(discoveryPlacements)
+        .where(eq(discoveryPlacements.subcategoryId, entityId));
+      const snapshotPlacements = snapshotArray(snapshot.placements, "subcategory placements");
+      const validIds = snapshotPlacements
+        .map((item) => snapshotText(item, "discoveryId", 64));
+      const existingDiscoveries = validIds.length
+        ? await tx
+            .select({ id: discoveries.id })
+            .from(discoveries)
+            .where(inArray(discoveries.id, validIds))
+        : [];
+      const existingIds = new Set(existingDiscoveries.map(({ id }) => id));
+      const rows = snapshotPlacements.flatMap((item) => {
+        const discoveryId = snapshotText(item, "discoveryId", 64);
+        return existingIds.has(discoveryId)
+          ? [{
+              discoveryId,
+              categoryId,
+              subcategoryId: entityId,
+              sortOrder: snapshotInteger(item, "sortOrder"),
+            }]
+          : [];
+      });
+      if (rows.length) {
+        await tx.insert(discoveryPlacements).values(rows).onConflictDoNothing();
+      }
+    } else if (entityType === "tag") {
+      const slug = slugSchema.parse(snapshotText(snapshot, "slug", 120));
+      const name = snapshotText(snapshot, "name", 80);
+      const normalizedName = normalizedTagName(name);
+      const [owner] = await tx
+        .select({ id: tags.id })
+        .from(tags)
+        .where(and(eq(tags.normalizedName, normalizedName), ne(tags.id, entityId)))
+        .limit(1);
+      if (owner) throw new ContentConflictError("That normalized tag name is already in use.");
+      const [slugOwner] = await tx
+        .select({ id: tags.id })
+        .from(tags)
+        .where(and(eq(tags.slug, slug), ne(tags.id, entityId)))
+        .limit(1);
+      if (slugOwner) throw new ContentConflictError("That tag slug is already in use.");
+      const [existing] = await tx
+        .select({ id: tags.id })
+        .from(tags)
+        .where(eq(tags.id, entityId))
+        .limit(1);
+      if (existing) {
+        await tx
+          .update(tags)
+          .set({ slug, name, normalizedName, updatedAt: new Date() })
+          .where(eq(tags.id, entityId));
+      } else {
+        await tx.insert(tags).values({ id: entityId, slug, name, normalizedName });
+      }
+      await tx.delete(discoveryTags).where(eq(discoveryTags.tagId, entityId));
+      const linkedIds = snapshotStringArray(snapshot.discoveryIds, "tag discoveries");
+      const existingDiscoveries = linkedIds.length
+        ? await tx
+            .select({ id: discoveries.id })
+            .from(discoveries)
+            .where(inArray(discoveries.id, linkedIds))
+        : [];
+      if (existingDiscoveries.length) {
+        await tx
+          .insert(discoveryTags)
+          .values(existingDiscoveries.map(({ id }) => ({ discoveryId: id, tagId: entityId })))
+          .onConflictDoNothing();
+      }
+    } else if (entityType === "collection") {
+      const slug = slugSchema.parse(snapshotText(snapshot, "slug", 120));
+      const name = snapshotText(snapshot, "name", 160);
+      const description = snapshotNullableText(snapshot, "description", 2000);
+      const sortOrder = snapshotInteger(snapshot, "sortOrder");
+      const [slugOwner] = await tx
+        .select({ id: collections.id })
+        .from(collections)
+        .where(and(eq(collections.slug, slug), ne(collections.id, entityId)))
+        .limit(1);
+      if (slugOwner) throw new ContentConflictError("That collection slug is already in use.");
+      const [existing] = await tx
+        .select({ id: collections.id })
+        .from(collections)
+        .where(eq(collections.id, entityId))
+        .limit(1);
+      const values = { slug, name, description, sortOrder, updatedAt: new Date() };
+      if (existing) {
+        await tx.update(collections).set(values).where(eq(collections.id, entityId));
+      } else {
+        await tx.insert(collections).values({ id: entityId, ...values });
+      }
+      const members = snapshotArray(snapshot.discoveries, "collection discoveries")
+        .sort((a, b) => snapshotInteger(a, "sortOrder") - snapshotInteger(b, "sortOrder"))
+        .map((item) => snapshotText(item, "discoveryId", 64));
+      await replaceCollectionDiscoveries(tx, entityId, members);
+    } else {
+      throw new InvalidContentError("This version cannot be restored.");
+    }
+
+    await recordAudit(tx, {
+      actorUserId,
+      entityType,
+      entityId,
+      action: `content.${entityType}.restored`,
+      changes: {
+        sourceVersionId: version.id,
+        before,
+      },
+      sourceVersionId: version.id,
+    });
+    return { entityType, entityId, restoredFromVersionId: version.id };
   });
 }

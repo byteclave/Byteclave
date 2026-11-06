@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type DiscoveryStatus = typeof DiscoveryStatus[keyof typeof DiscoveryStatus];
+export type PublishingQueueHistoryItemToStatus = typeof PublishingQueueHistoryItemToStatus[keyof typeof PublishingQueueHistoryItemToStatus];
 
 
-export const DiscoveryStatus = {
+export const PublishingQueueHistoryItemToStatus = {
   draft: 'draft',
   review: 'review',
   published: 'published',

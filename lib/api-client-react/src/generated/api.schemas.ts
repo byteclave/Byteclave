@@ -71,16 +71,6 @@ export interface Tag {
   name: string;
 }
 
-export type DiscoveryStatus = typeof DiscoveryStatus[keyof typeof DiscoveryStatus];
-
-
-export const DiscoveryStatus = {
-  draft: 'draft',
-  review: 'review',
-  published: 'published',
-  archived: 'archived',
-} as const;
-
 export interface Discovery {
   id: string;
   slug: string;
@@ -90,7 +80,6 @@ export interface Discovery {
   summary: string | null;
   /** @nullable */
   description: string | null;
-  status: DiscoveryStatus;
   tags: Tag[];
   placements: Placement[];
 }
@@ -133,7 +122,7 @@ export interface DiscoveryInput {
      * @nullable
      */
   description?: string | null;
-  status: DiscoveryInputStatus;
+  status?: DiscoveryInputStatus;
   /**
      * @items.minLength 1
      * @items.maxLength 80
@@ -265,6 +254,157 @@ export interface AdminCatalog {
   collections: Collection[];
 }
 
+export type PublishingActionAction = typeof PublishingActionAction[keyof typeof PublishingActionAction];
+
+
+export const PublishingActionAction = {
+  submit_for_review: 'submit_for_review',
+  approve: 'approve',
+  reject: 'reject',
+  unpublish: 'unpublish',
+  archive: 'archive',
+  restore: 'restore',
+} as const;
+
+export interface PublishingAction {
+  action: PublishingActionAction;
+  /** @maxLength 1000 */
+  note?: string;
+}
+
+export type PublishingQueueItemsItemStatus = typeof PublishingQueueItemsItemStatus[keyof typeof PublishingQueueItemsItemStatus];
+
+
+export const PublishingQueueItemsItemStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export type PublishingQueueItemsItem = {
+  id: string;
+  slug: string;
+  title: string;
+  /** @nullable */
+  summary: string | null;
+  /** @nullable */
+  description: string | null;
+  url: string;
+  status: PublishingQueueItemsItemStatus;
+  updatedAt: string;
+};
+
+export type PublishingQueueHistoryItemFromStatus = typeof PublishingQueueHistoryItemFromStatus[keyof typeof PublishingQueueHistoryItemFromStatus];
+
+
+export const PublishingQueueHistoryItemFromStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export type PublishingQueueHistoryItemToStatus = typeof PublishingQueueHistoryItemToStatus[keyof typeof PublishingQueueHistoryItemToStatus];
+
+
+export const PublishingQueueHistoryItemToStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export type PublishingQueueHistoryItem = {
+  id: string;
+  discoveryId: string;
+  fromStatus: PublishingQueueHistoryItemFromStatus;
+  toStatus: PublishingQueueHistoryItemToStatus;
+  /** @nullable */
+  actorUserId: string | null;
+  /** @nullable */
+  actorEmail: string | null;
+  /** @nullable */
+  note: string | null;
+  createdAt: string;
+};
+
+export interface PublishingQueue {
+  items: PublishingQueueItemsItem[];
+  history: PublishingQueueHistoryItem[];
+}
+
+export type ContentVersionEntityType = typeof ContentVersionEntityType[keyof typeof ContentVersionEntityType];
+
+
+export const ContentVersionEntityType = {
+  discovery: 'discovery',
+  category: 'category',
+  subcategory: 'subcategory',
+  tag: 'tag',
+  collection: 'collection',
+} as const;
+
+export type ContentVersionAction = typeof ContentVersionAction[keyof typeof ContentVersionAction];
+
+
+export const ContentVersionAction = {
+  created: 'created',
+  updated: 'updated',
+  deleted: 'deleted',
+  restored: 'restored',
+} as const;
+
+export type ContentVersionSnapshot = { [key: string]: unknown };
+
+export interface ContentVersion {
+  id: string;
+  entityType: ContentVersionEntityType;
+  entityId: string;
+  action: ContentVersionAction;
+  snapshot: ContentVersionSnapshot;
+  /** @nullable */
+  sourceVersionId: string | null;
+  /** @nullable */
+  actorUserId: string | null;
+  /** @nullable */
+  actorEmail: string | null;
+  createdAt: string;
+}
+
+export type ContentVersionList = ContentVersion[];
+
+export type VersionRestoreResultEntityType = typeof VersionRestoreResultEntityType[keyof typeof VersionRestoreResultEntityType];
+
+
+export const VersionRestoreResultEntityType = {
+  discovery: 'discovery',
+  category: 'category',
+  subcategory: 'subcategory',
+  tag: 'tag',
+  collection: 'collection',
+} as const;
+
+export interface VersionRestoreResult {
+  entityType: VersionRestoreResultEntityType;
+  entityId: string;
+  restoredFromVersionId: string;
+}
+
+export interface AppearanceSettings {
+  /** @maxLength 120 */
+  homepageEyebrow: string;
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  homepageHeadline: string;
+  /** @maxLength 1000 */
+  homepageDescription: string;
+  /** @maxLength 180 */
+  footerText: string;
+}
+
 export interface PublicSubcategory {
   id: string;
   slug: string;
@@ -381,4 +521,25 @@ export type SearchPublishedCatalogParams = {
  */
 q: string;
 };
+
+export type ListAdminContentVersionsParams = {
+entityType?: ListAdminContentVersionsEntityType;
+entityId?: string;
+/**
+ * @minimum 1
+ * @maximum 200
+ */
+limit?: number;
+};
+
+export type ListAdminContentVersionsEntityType = typeof ListAdminContentVersionsEntityType[keyof typeof ListAdminContentVersionsEntityType];
+
+
+export const ListAdminContentVersionsEntityType = {
+  discovery: 'discovery',
+  category: 'category',
+  subcategory: 'subcategory',
+  tag: 'tag',
+  collection: 'collection',
+} as const;
 

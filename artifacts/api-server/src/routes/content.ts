@@ -7,7 +7,11 @@ import {
   CreateTagBody,
   DeleteSubcategoryBody,
   GetAdminCatalogResponse,
+  GetAdminDiscoveryPreviewResponse,
   GetAdminOverviewResponse,
+  GetAdminPublishingQueueResponse,
+  GetAdminAppearanceResponse,
+  GetPublicAppearanceResponse,
   GetAdminSessionResponse,
   GetExploreCatalogResponse,
   GetPublicCategoryResponse,
@@ -16,14 +20,20 @@ import {
   GetPublicSubcategoryResponse,
   LoginAdminBody,
   LoginAdminResponse,
+  ListAdminContentVersionsQueryParams,
+  ListAdminContentVersionsResponse,
   LogoutAdminResponse,
   SearchPublishedCatalogQueryParams,
   SearchPublishedCatalogResponse,
   UpdateCategoryBody,
+  UpdateAdminAppearanceBody,
+  UpdateAdminAppearanceResponse,
   UpdateCollectionBody,
   UpdateDiscoveryBody,
   UpdateSubcategoryBody,
   UpdateTagBody,
+  PerformAdminPublishingActionBody,
+  RestoreAdminContentVersionResponse,
 } from "@workspace/api-zod";
 import {
   acceptAdminInvitation,
@@ -44,6 +54,13 @@ import {
   deleteTag,
   getAdminCatalog,
   getAdminOverviewMetrics,
+  getPublishingQueue,
+  getAppearanceSettings,
+  updateAppearanceSettings,
+  listContentVersions,
+  restoreContentVersion,
+  performPublishingAction,
+  InvalidPublishingTransitionError,
   getAdminSession,
   getSecuritySettings,
   issueManagedPasswordReset,
@@ -187,23 +204,17 @@ function routeParam(request: Request, name: string): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-function mayChangeToStatus(
-  request: Request,
-  response: Response,
-  status: string,
-): boolean {
-  const permission = status === "published" ? "publishing:publish" : "publishing:review";
-  if (!hasPermission(actor(request).permissions, permission)) {
-    response.status(403).json({ error: `The ${permission} permission is required.` });
-    return false;
-  }
-  return true;
-}
-
 publicRouter.get(
   "/catalog/explore",
   asyncRoute(async (_request, response) => {
     response.json(GetExploreCatalogResponse.parse(await getExploreCatalog()));
+  }),
+);
+
+publicRouter.get(
+  "/catalog/appearance",
+  asyncRoute(async (_request, response) => {
+    response.json(GetPublicAppearanceResponse.parse(await getAppearanceSettings()));
   }),
 );
 
@@ -388,6 +399,109 @@ contentRouter.get(
     response.json(GetAdminCatalogResponse.parse(await getAdminCatalog()));
   }),
 );
+contentRouter.get(
+  "/admin/publishing",
+  requirePermission("catalog:read"),
+  asyncRoute(async (_request, response) => {
+    response.json(GetAdminPublishingQueueResponse.parse(await getPublishingQueue()));
+  }),
+);
+contentRouter.get(
+  "/admin/discoveries/:id/preview",
+  requirePermission("catalog:read"),
+  asyncRoute(async (request, response) => {
+    const id = routeParam(request, "id");
+    const catalog = await getAdminCatalog();
+    const discovery = catalog.discoveries.find((item) => item.id === id);
+    if (!discovery) {
+      response.status(404).json({ error: "Discovery not found." });
+      return;
+    }
+    response.json(GetAdminDiscoveryPreviewResponse.parse(discovery));
+  }),
+);
+contentRouter.post(
+  "/admin/discoveries/:id/publishing-action",
+  requirePermission("discoveries:manage"),
+  asyncRoute(async (request, response, next) => {
+    const body = checkBody(PerformAdminPublishingActionBody, request.body, response);
+    if (!body) return;
+    const permission =
+      body.action === "submit_for_review" || body.action === "reject"
+        ? "publishing:review"
+        : "publishing:publish";
+    if (!hasPermission(actor(request).permissions, permission)) {
+      response.status(403).json({ error: `The ${permission} permission is required.` });
+      return;
+    }
+    const id = routeParam(request, "id");
+    try {
+      await performPublishingAction(id, body.action, actor(request).userId, body.note);
+    } catch (error) {
+      if (error instanceof InvalidPublishingTransitionError) {
+        response.status(409).json({ error: error.message });
+        return;
+      }
+      next(error);
+      return;
+    }
+    const catalog = await getAdminCatalog();
+    const discovery = catalog.discoveries.find((item) => item.id === id);
+    if (!discovery) {
+      response.status(404).json({ error: "Discovery not found." });
+      return;
+    }
+    response.json(GetAdminDiscoveryPreviewResponse.parse(discovery));
+  }),
+);
+contentRouter.get(
+  "/admin/versions",
+  requirePermission("versions:read"),
+  asyncRoute(async (request, response) => {
+    const query = checkBody(
+      ListAdminContentVersionsQueryParams,
+      request.query,
+      response,
+    );
+    if (!query) return;
+    response.json(
+      ListAdminContentVersionsResponse.parse(await listContentVersions(query)),
+    );
+  }),
+);
+contentRouter.post(
+  "/admin/versions/:versionId/restore",
+  requirePermission("versions:restore"),
+  asyncRoute(async (request, response) => {
+    const result = await restoreContentVersion(
+      routeParam(request, "versionId"),
+      actor(request).userId,
+    );
+    response.json(RestoreAdminContentVersionResponse.parse(result));
+  }),
+);
+contentRouter.get(
+  "/admin/appearance",
+  requirePermission("appearance:manage"),
+  asyncRoute(async (_request, response) => {
+    response.json(GetAdminAppearanceResponse.parse(await getAppearanceSettings()));
+  }),
+);
+contentRouter.put(
+  "/admin/appearance",
+  requirePermission("appearance:manage"),
+  asyncRoute(async (request, response) => {
+    const body = checkBody(UpdateAdminAppearanceBody, request.body, response);
+    if (!body) return;
+    const session = actor(request);
+    const settings = await updateAppearanceSettings(body, {
+      userId: session.userId,
+      roles: session.roles,
+      permissions: session.permissions,
+    });
+    response.json(UpdateAdminAppearanceResponse.parse(settings));
+  }),
+);
 
 contentRouter.get(
   "/admin/users",
@@ -529,7 +643,6 @@ contentRouter.post(
   asyncRoute(async (request, response) => {
     const body = checkBody(CreateDiscoveryBody, request.body, response);
     if (!body) return;
-    if (body.status !== "draft" && !mayChangeToStatus(request, response, body.status)) return;
     const result = await createDiscovery(body, actor(request).userId);
     response.status(result.duplicate ? 200 : 201).json(result);
   }),
@@ -541,14 +654,7 @@ contentRouter.patch(
   asyncRoute(async (request, response) => {
     const body = checkBody(UpdateDiscoveryBody, request.body, response);
     if (!body) return;
-    const catalog = await getAdminCatalog();
     const id = routeParam(request, "id");
-    const current = catalog.discoveries.find((item) => item.id === id);
-    if (!current) {
-      response.status(404).json({ error: "Discovery not found." });
-      return;
-    }
-    if (body.status !== current.status && !mayChangeToStatus(request, response, body.status)) return;
     response.json(
       await updateDiscovery(id, body, actor(request).userId),
     );

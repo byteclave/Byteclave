@@ -5,7 +5,7 @@ import {
   InvalidPublishingTransitionError,
 } from "@workspace/domain/services";
 import { getDb } from "../index";
-import { discoveries, publishingRecords } from "../schema/index";
+import { auditLogs, discoveries, publishingRecords } from "../schema/index";
 
 export class DiscoveryNotFoundError extends Error {
   constructor(discoveryId: string) {
@@ -14,7 +14,10 @@ export class DiscoveryNotFoundError extends Error {
   }
 }
 
-export async function transitionDiscovery(input: unknown) {
+export async function transitionDiscovery(
+  input: unknown,
+  actorUserId: string | null = null,
+) {
   const transition = publishingTransitionInputSchema.parse(input);
   const database = getDb();
 
@@ -43,12 +46,61 @@ export async function transitionDiscovery(input: unknown) {
       discoveryId: transition.discoveryId,
       fromStatus: current.status,
       toStatus: transition.nextStatus,
-      actorUserId: transition.actorUserId ?? null,
+      actorUserId,
       note: transition.note ?? null,
+    });
+    await tx.insert(auditLogs).values({
+      actorUserId,
+      entityType: "discovery",
+      entityId: transition.discoveryId,
+      action: `publishing.discovery.${transition.nextStatus}`,
+      changes: {
+        before: { status: current.status },
+        after: { status: transition.nextStatus },
+        note: transition.note ?? null,
+      },
     });
 
     return updated;
   });
+}
+
+export async function performPublishingAction(
+  discoveryId: string,
+  action: "submit_for_review" | "approve" | "reject" | "unpublish" | "archive" | "restore",
+  actorUserId: string,
+  note?: string,
+) {
+  const [current] = await getDb()
+    .select({ status: discoveries.status })
+    .from(discoveries)
+    .where(eq(discoveries.id, discoveryId))
+    .limit(1);
+  if (!current) throw new DiscoveryNotFoundError(discoveryId);
+
+  const nextStatus = {
+    submit_for_review: "review",
+    approve: "published",
+    reject: "draft",
+    unpublish: "draft",
+    archive: "archived",
+    restore: "draft",
+  }[action] as typeof current.status;
+
+  if (
+    (action === "submit_for_review" && current.status !== "draft") ||
+    ((action === "approve" || action === "reject") && current.status !== "review") ||
+    (action === "unpublish" && current.status !== "published") ||
+    (action === "restore" && current.status !== "archived") ||
+    (action === "archive" && current.status === "archived")
+  ) {
+    throw new InvalidPublishingTransitionError(current.status, nextStatus);
+  }
+
+  return transitionDiscovery(
+    { discoveryId, nextStatus, note },
+    actorUserId,
+  );
 }
 
 export { InvalidPublishingTransitionError };

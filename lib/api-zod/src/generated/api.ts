@@ -60,7 +60,6 @@ export const SearchPublishedCatalogResponseItem = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -112,7 +111,6 @@ export const GetPublicCategoryResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -157,7 +155,6 @@ export const GetPublicSubcategoryResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -197,7 +194,6 @@ export const GetPublicCollectionResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -231,7 +227,6 @@ export const GetPublicDiscoveryResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -327,7 +322,6 @@ export const GetAdminCatalogResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -379,6 +373,225 @@ export const GetAdminCatalogResponse = zod.object({
 
 
 /**
+ * @summary List discoveries and publishing history
+ */
+export const GetAdminPublishingQueueResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "slug": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "url": zod.string().url(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
+  "updatedAt": zod.coerce.date()
+})),
+  "history": zod.array(zod.object({
+  "id": zod.string(),
+  "discoveryId": zod.string(),
+  "fromStatus": zod.enum(['draft', 'review', 'published', 'archived']),
+  "toStatus": zod.enum(['draft', 'review', 'published', 'archived']),
+  "actorUserId": zod.string().nullable(),
+  "actorEmail": zod.string().nullable(),
+  "note": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Preview a discovery without publishing it
+ */
+export const GetAdminDiscoveryPreviewParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const GetAdminDiscoveryPreviewResponse = zod.object({
+  "id": zod.string(),
+  "slug": zod.string(),
+  "title": zod.string(),
+  "url": zod.string(),
+  "summary": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "tags": zod.array(zod.object({
+  "id": zod.string(),
+  "slug": zod.string(),
+  "name": zod.string()
+})),
+  "placements": zod.array(zod.object({
+  "categoryId": zod.string(),
+  "categorySlug": zod.string(),
+  "categoryName": zod.string(),
+  "subcategoryId": zod.string().nullable(),
+  "subcategorySlug": zod.string().nullable(),
+  "subcategoryName": zod.string().nullable(),
+  "sortOrder": zod.number().int()
+}))
+})
+
+
+/**
+ * @summary Submit, review, publish, unpublish, archive, or restore a discovery
+ */
+export const PerformAdminPublishingActionParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const performAdminPublishingActionBodyNoteMax = 1000;
+
+
+
+export const PerformAdminPublishingActionBody = zod.object({
+  "action": zod.enum(['submit_for_review', 'approve', 'reject', 'unpublish', 'archive', 'restore']),
+  "note": zod.string().max(performAdminPublishingActionBodyNoteMax).optional()
+})
+
+export const PerformAdminPublishingActionResponse = zod.object({
+  "id": zod.string(),
+  "slug": zod.string(),
+  "title": zod.string(),
+  "url": zod.string(),
+  "summary": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "tags": zod.array(zod.object({
+  "id": zod.string(),
+  "slug": zod.string(),
+  "name": zod.string()
+})),
+  "placements": zod.array(zod.object({
+  "categoryId": zod.string(),
+  "categorySlug": zod.string(),
+  "categoryName": zod.string(),
+  "subcategoryId": zod.string().nullable(),
+  "subcategorySlug": zod.string().nullable(),
+  "subcategoryName": zod.string().nullable(),
+  "sortOrder": zod.number().int()
+}))
+})
+
+
+/**
+ * @summary Inspect recorded content versions
+ */
+export const listAdminContentVersionsQueryLimitMax = 200;
+
+
+
+export const ListAdminContentVersionsQueryParams = zod.object({
+  "entityType": zod.enum(['discovery', 'category', 'subcategory', 'tag', 'collection']).optional(),
+  "entityId": zod.coerce.string().uuid().optional(),
+  "limit": zod.coerce.number().int().min(1).max(listAdminContentVersionsQueryLimitMax).optional()
+})
+
+export const ListAdminContentVersionsResponseItem = zod.object({
+  "id": zod.string(),
+  "entityType": zod.enum(['discovery', 'category', 'subcategory', 'tag', 'collection']),
+  "entityId": zod.string(),
+  "action": zod.enum(['created', 'updated', 'deleted', 'restored']),
+  "snapshot": zod.record(zod.string(), zod.unknown()),
+  "sourceVersionId": zod.string().nullable(),
+  "actorUserId": zod.string().nullable(),
+  "actorEmail": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminContentVersionsResponse = zod.array(ListAdminContentVersionsResponseItem)
+
+
+/**
+ * @summary Restore a version as a new recorded change
+ */
+export const RestoreAdminContentVersionParams = zod.object({
+  "versionId": zod.coerce.string().uuid()
+})
+
+export const RestoreAdminContentVersionResponse = zod.object({
+  "entityType": zod.enum(['discovery', 'category', 'subcategory', 'tag', 'collection']),
+  "entityId": zod.string(),
+  "restoredFromVersionId": zod.string()
+})
+
+
+/**
+ * @summary Get supported public appearance settings
+ */
+export const getPublicAppearanceResponseHomepageEyebrowMax = 120;
+
+export const getPublicAppearanceResponseHomepageHeadlineMax = 180;
+
+export const getPublicAppearanceResponseHomepageDescriptionMax = 1000;
+
+export const getPublicAppearanceResponseFooterTextMax = 180;
+
+
+
+export const GetPublicAppearanceResponse = zod.object({
+  "homepageEyebrow": zod.string().max(getPublicAppearanceResponseHomepageEyebrowMax),
+  "homepageHeadline": zod.string().min(1).max(getPublicAppearanceResponseHomepageHeadlineMax),
+  "homepageDescription": zod.string().max(getPublicAppearanceResponseHomepageDescriptionMax),
+  "footerText": zod.string().max(getPublicAppearanceResponseFooterTextMax)
+})
+
+
+/**
+ * @summary Get editable appearance settings
+ */
+export const getAdminAppearanceResponseHomepageEyebrowMax = 120;
+
+export const getAdminAppearanceResponseHomepageHeadlineMax = 180;
+
+export const getAdminAppearanceResponseHomepageDescriptionMax = 1000;
+
+export const getAdminAppearanceResponseFooterTextMax = 180;
+
+
+
+export const GetAdminAppearanceResponse = zod.object({
+  "homepageEyebrow": zod.string().max(getAdminAppearanceResponseHomepageEyebrowMax),
+  "homepageHeadline": zod.string().min(1).max(getAdminAppearanceResponseHomepageHeadlineMax),
+  "homepageDescription": zod.string().max(getAdminAppearanceResponseHomepageDescriptionMax),
+  "footerText": zod.string().max(getAdminAppearanceResponseFooterTextMax)
+})
+
+
+/**
+ * @summary Update supported appearance settings
+ */
+export const updateAdminAppearanceBodyHomepageEyebrowMax = 120;
+
+export const updateAdminAppearanceBodyHomepageHeadlineMax = 180;
+
+export const updateAdminAppearanceBodyHomepageDescriptionMax = 1000;
+
+export const updateAdminAppearanceBodyFooterTextMax = 180;
+
+
+
+export const UpdateAdminAppearanceBody = zod.object({
+  "homepageEyebrow": zod.string().max(updateAdminAppearanceBodyHomepageEyebrowMax),
+  "homepageHeadline": zod.string().min(1).max(updateAdminAppearanceBodyHomepageHeadlineMax),
+  "homepageDescription": zod.string().max(updateAdminAppearanceBodyHomepageDescriptionMax),
+  "footerText": zod.string().max(updateAdminAppearanceBodyFooterTextMax)
+})
+
+export const updateAdminAppearanceResponseHomepageEyebrowMax = 120;
+
+export const updateAdminAppearanceResponseHomepageHeadlineMax = 180;
+
+export const updateAdminAppearanceResponseHomepageDescriptionMax = 1000;
+
+export const updateAdminAppearanceResponseFooterTextMax = 180;
+
+
+
+export const UpdateAdminAppearanceResponse = zod.object({
+  "homepageEyebrow": zod.string().max(updateAdminAppearanceResponseHomepageEyebrowMax),
+  "homepageHeadline": zod.string().min(1).max(updateAdminAppearanceResponseHomepageHeadlineMax),
+  "homepageDescription": zod.string().max(updateAdminAppearanceResponseHomepageDescriptionMax),
+  "footerText": zod.string().max(updateAdminAppearanceResponseFooterTextMax)
+})
+
+
+/**
  * @summary Create a discovery or return an existing URL match
  */
 export const createDiscoveryBodySlugMax = 120;
@@ -403,7 +616,7 @@ export const CreateDiscoveryBody = zod.object({
   "url": zod.string().url().max(createDiscoveryBodyUrlMax),
   "summary": zod.string().max(createDiscoveryBodySummaryMax).nullish(),
   "description": zod.string().max(createDiscoveryBodyDescriptionMax).nullish(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']).optional(),
   "tags": zod.array(zod.string().min(1).max(createDiscoveryBodyTagsItemMax)),
   "placements": zod.array(zod.object({
   "categoryId": zod.string().uuid(),
@@ -420,7 +633,6 @@ export const CreateDiscoveryResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -470,7 +682,7 @@ export const UpdateDiscoveryBody = zod.object({
   "url": zod.string().url().max(updateDiscoveryBodyUrlMax),
   "summary": zod.string().max(updateDiscoveryBodySummaryMax).nullish(),
   "description": zod.string().max(updateDiscoveryBodyDescriptionMax).nullish(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']).optional(),
   "tags": zod.array(zod.string().min(1).max(updateDiscoveryBodyTagsItemMax)),
   "placements": zod.array(zod.object({
   "categoryId": zod.string().uuid(),
@@ -487,7 +699,6 @@ export const UpdateDiscoveryResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),

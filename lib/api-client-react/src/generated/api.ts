@@ -29,6 +29,7 @@ import type {
   AdminLoginInput,
   AdminOverview,
   AdminSession,
+  AppearanceSettings,
   BadRequestResponse,
   Category,
   CategoryInput,
@@ -37,6 +38,7 @@ import type {
   CollectionInput,
   CollectionPage,
   ConflictResponse,
+  ContentVersionList,
   DeleteSubcategoryInput,
   Discovery,
   DiscoveryInput,
@@ -45,8 +47,11 @@ import type {
   ExploreCatalog,
   ForbiddenResponse,
   HealthStatus,
+  ListAdminContentVersionsParams,
   NotFoundResponse,
   OkResponse,
+  PublishingAction,
+  PublishingQueue,
   RateLimitedResponse,
   SearchPublishedCatalogParams,
   Subcategory,
@@ -54,7 +59,8 @@ import type {
   SubcategoryPage,
   Tag,
   TagInput,
-  UnauthorizedResponse
+  UnauthorizedResponse,
+  VersionRestoreResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1271,6 +1277,769 @@ export function useGetAdminCatalog<TData = Awaited<ReturnType<typeof getAdminCat
 
 
 
+
+export const getGetAdminPublishingQueueUrl = () => {
+
+
+
+
+  return `/api/admin/publishing`
+}
+
+/**
+ * @summary List discoveries and publishing history
+ */
+export const getAdminPublishingQueue = async ( options?: Parameters<typeof customFetch>[1]): Promise<PublishingQueue> => {
+
+  return customFetch<PublishingQueue>(getGetAdminPublishingQueueUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminPublishingQueueQueryKey = () => {
+    return [
+    `/api/admin/publishing`
+    ] as const;
+    }
+
+
+export const getGetAdminPublishingQueueQueryOptions = <TData = Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminPublishingQueueQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminPublishingQueue>>> = ({ signal }) => getAdminPublishingQueue({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminPublishingQueueQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminPublishingQueue>>>
+export type GetAdminPublishingQueueQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+export function useGetAdminPublishingQueue<TData = Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminPublishingQueue>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminPublishingQueue>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminPublishingQueue<TData = Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminPublishingQueue>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminPublishingQueue>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminPublishingQueue<TData = Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List discoveries and publishing history
+ */
+
+export function useGetAdminPublishingQueue<TData = Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminPublishingQueue>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdminPublishingQueueQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminDiscoveryPreviewUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/discoveries/${id}/preview`
+}
+
+/**
+ * @summary Preview a discovery without publishing it
+ */
+export const getAdminDiscoveryPreview = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<Discovery> => {
+
+  return customFetch<Discovery>(getGetAdminDiscoveryPreviewUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminDiscoveryPreviewQueryKey = (id: string,) => {
+    return [
+    `/api/admin/discoveries/${id}/preview`
+    ] as const;
+    }
+
+
+export const getGetAdminDiscoveryPreviewQueryOptions = <TData = Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminDiscoveryPreviewQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminDiscoveryPreview>>> = ({ signal }) => getAdminDiscoveryPreview(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminDiscoveryPreviewQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminDiscoveryPreview>>>
+export type GetAdminDiscoveryPreviewQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+export function useGetAdminDiscoveryPreview<TData = Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminDiscoveryPreview>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminDiscoveryPreview>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminDiscoveryPreview<TData = Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminDiscoveryPreview>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminDiscoveryPreview>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminDiscoveryPreview<TData = Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Preview a discovery without publishing it
+ */
+
+export function useGetAdminDiscoveryPreview<TData = Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminDiscoveryPreview>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdminDiscoveryPreviewQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPerformAdminPublishingActionUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/discoveries/${id}/publishing-action`
+}
+
+/**
+ * @summary Submit, review, publish, unpublish, archive, or restore a discovery
+ */
+export const performAdminPublishingAction = async (id: string,
+    publishingAction: PublishingAction, options?: Parameters<typeof customFetch>[1]): Promise<Discovery> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Discovery>(getPerformAdminPublishingActionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(publishingAction)
+  }
+);}
+
+
+
+
+
+export const getPerformAdminPublishingActionMutationKey = () => ['performAdminPublishingAction'] as const;
+
+export const getPerformAdminPublishingActionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof performAdminPublishingAction>>, TError,PerformAdminPublishingActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof performAdminPublishingAction>>, TError,PerformAdminPublishingActionMutationVariables, TContext> => {
+
+const mutationKey = getPerformAdminPublishingActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof performAdminPublishingAction>>, PerformAdminPublishingActionMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  performAdminPublishingAction(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PerformAdminPublishingActionMutationResult = NonNullable<Awaited<ReturnType<typeof performAdminPublishingAction>>>
+    export type PerformAdminPublishingActionMutationBody = BodyType<PublishingAction>
+    export type PerformAdminPublishingActionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+    export type PerformAdminPublishingActionMutationVariables = {id: string;data: BodyType<PublishingAction>}
+
+    /**
+ * @summary Submit, review, publish, unpublish, archive, or restore a discovery
+ */
+export const usePerformAdminPublishingAction = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof performAdminPublishingAction>>, TError,PerformAdminPublishingActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof performAdminPublishingAction>>,
+        TError,
+        PerformAdminPublishingActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPerformAdminPublishingActionMutationOptions(options), queryClient);
+    }
+
+export const getListAdminContentVersionsUrl = (params?: ListAdminContentVersionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/versions?${stringifiedParams}` : `/api/admin/versions`
+}
+
+/**
+ * @summary Inspect recorded content versions
+ */
+export const listAdminContentVersions = async (params?: ListAdminContentVersionsParams, options?: Parameters<typeof customFetch>[1]): Promise<ContentVersionList> => {
+
+  return customFetch<ContentVersionList>(getListAdminContentVersionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminContentVersionsQueryKey = (params?: ListAdminContentVersionsParams,) => {
+    return [
+    `/api/admin/versions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminContentVersionsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminContentVersions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(params?: ListAdminContentVersionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContentVersions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminContentVersionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminContentVersions>>> = ({ signal }) => listAdminContentVersions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminContentVersions>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminContentVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminContentVersions>>>
+export type ListAdminContentVersionsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+export function useListAdminContentVersions<TData = Awaited<ReturnType<typeof listAdminContentVersions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+ params: undefined |  ListAdminContentVersionsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContentVersions>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminContentVersions>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminContentVersions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminContentVersions<TData = Awaited<ReturnType<typeof listAdminContentVersions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+ params?: ListAdminContentVersionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContentVersions>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminContentVersions>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminContentVersions>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminContentVersions<TData = Awaited<ReturnType<typeof listAdminContentVersions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+ params?: ListAdminContentVersionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContentVersions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Inspect recorded content versions
+ */
+
+export function useListAdminContentVersions<TData = Awaited<ReturnType<typeof listAdminContentVersions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+ params?: ListAdminContentVersionsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContentVersions>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAdminContentVersionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRestoreAdminContentVersionUrl = (versionId: string,) => {
+
+
+
+
+  return `/api/admin/versions/${versionId}/restore`
+}
+
+/**
+ * @summary Restore a version as a new recorded change
+ */
+export const restoreAdminContentVersion = async (versionId: string, options?: Parameters<typeof customFetch>[1]): Promise<VersionRestoreResult> => {
+
+  return customFetch<VersionRestoreResult>(getRestoreAdminContentVersionUrl(versionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRestoreAdminContentVersionMutationKey = () => ['restoreAdminContentVersion'] as const;
+
+export const getRestoreAdminContentVersionMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreAdminContentVersion>>, TError,RestoreAdminContentVersionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreAdminContentVersion>>, TError,RestoreAdminContentVersionMutationVariables, TContext> => {
+
+const mutationKey = getRestoreAdminContentVersionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreAdminContentVersion>>, RestoreAdminContentVersionMutationVariables> = (props) => {
+          const {versionId} = props ?? {};
+
+          return  restoreAdminContentVersion(versionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreAdminContentVersionMutationResult = NonNullable<Awaited<ReturnType<typeof restoreAdminContentVersion>>>
+
+    export type RestoreAdminContentVersionMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+    export type RestoreAdminContentVersionMutationVariables = {versionId: string}
+
+    /**
+ * @summary Restore a version as a new recorded change
+ */
+export const useRestoreAdminContentVersion = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreAdminContentVersion>>, TError,RestoreAdminContentVersionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof restoreAdminContentVersion>>,
+        TError,
+        RestoreAdminContentVersionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRestoreAdminContentVersionMutationOptions(options), queryClient);
+    }
+
+export const getGetPublicAppearanceUrl = () => {
+
+
+
+
+  return `/api/catalog/appearance`
+}
+
+/**
+ * @summary Get supported public appearance settings
+ */
+export const getPublicAppearance = async ( options?: Parameters<typeof customFetch>[1]): Promise<AppearanceSettings> => {
+
+  return customFetch<AppearanceSettings>(getGetPublicAppearanceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicAppearanceQueryKey = () => {
+    return [
+    `/api/catalog/appearance`
+    ] as const;
+    }
+
+
+export const getGetPublicAppearanceQueryOptions = <TData = Awaited<ReturnType<typeof getPublicAppearance>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicAppearance>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicAppearanceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicAppearance>>> = ({ signal }) => getPublicAppearance({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicAppearance>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPublicAppearanceQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicAppearance>>>
+export type GetPublicAppearanceQueryError = ErrorType<unknown>
+
+
+export function useGetPublicAppearance<TData = Awaited<ReturnType<typeof getPublicAppearance>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicAppearance>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPublicAppearance>>,
+          TError,
+          Awaited<ReturnType<typeof getPublicAppearance>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPublicAppearance<TData = Awaited<ReturnType<typeof getPublicAppearance>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicAppearance>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPublicAppearance>>,
+          TError,
+          Awaited<ReturnType<typeof getPublicAppearance>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPublicAppearance<TData = Awaited<ReturnType<typeof getPublicAppearance>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicAppearance>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get supported public appearance settings
+ */
+
+export function useGetPublicAppearance<TData = Awaited<ReturnType<typeof getPublicAppearance>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicAppearance>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPublicAppearanceQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminAppearanceUrl = () => {
+
+
+
+
+  return `/api/admin/appearance`
+}
+
+/**
+ * @summary Get editable appearance settings
+ */
+export const getAdminAppearance = async ( options?: Parameters<typeof customFetch>[1]): Promise<AppearanceSettings> => {
+
+  return customFetch<AppearanceSettings>(getGetAdminAppearanceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminAppearanceQueryKey = () => {
+    return [
+    `/api/admin/appearance`
+    ] as const;
+    }
+
+
+export const getGetAdminAppearanceQueryOptions = <TData = Awaited<ReturnType<typeof getAdminAppearance>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminAppearance>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminAppearanceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminAppearance>>> = ({ signal }) => getAdminAppearance({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminAppearance>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminAppearanceQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminAppearance>>>
+export type GetAdminAppearanceQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+export function useGetAdminAppearance<TData = Awaited<ReturnType<typeof getAdminAppearance>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminAppearance>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminAppearance>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminAppearance>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminAppearance<TData = Awaited<ReturnType<typeof getAdminAppearance>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminAppearance>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminAppearance>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminAppearance>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminAppearance<TData = Awaited<ReturnType<typeof getAdminAppearance>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminAppearance>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get editable appearance settings
+ */
+
+export function useGetAdminAppearance<TData = Awaited<ReturnType<typeof getAdminAppearance>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminAppearance>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdminAppearanceQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminAppearanceUrl = () => {
+
+
+
+
+  return `/api/admin/appearance`
+}
+
+/**
+ * @summary Update supported appearance settings
+ */
+export const updateAdminAppearance = async (appearanceSettings: AppearanceSettings, options?: Parameters<typeof customFetch>[1]): Promise<AppearanceSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AppearanceSettings>(getUpdateAdminAppearanceUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(appearanceSettings)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminAppearanceMutationKey = () => ['updateAdminAppearance'] as const;
+
+export const getUpdateAdminAppearanceMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminAppearance>>, TError,UpdateAdminAppearanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminAppearance>>, TError,UpdateAdminAppearanceMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminAppearanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminAppearance>>, UpdateAdminAppearanceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAdminAppearance(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminAppearanceMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminAppearance>>>
+    export type UpdateAdminAppearanceMutationBody = BodyType<AppearanceSettings>
+    export type UpdateAdminAppearanceMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
+    export type UpdateAdminAppearanceMutationVariables = {data: BodyType<AppearanceSettings>}
+
+    /**
+ * @summary Update supported appearance settings
+ */
+export const useUpdateAdminAppearance = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminAppearance>>, TError,UpdateAdminAppearanceMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminAppearance>>,
+        TError,
+        UpdateAdminAppearanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminAppearanceMutationOptions(options), queryClient);
+    }
 
 export const getCreateDiscoveryUrl = () => {
 

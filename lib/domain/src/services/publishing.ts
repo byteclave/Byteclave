@@ -4,7 +4,7 @@ const allowedTransitions: Record<PublishingStatus, readonly PublishingStatus[]> 
   {
     draft: ["review", "archived"],
     review: ["draft", "published", "archived"],
-    published: ["review", "archived"],
+    published: ["review", "draft", "archived"],
     archived: ["draft"],
   };
 

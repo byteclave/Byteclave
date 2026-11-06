@@ -28,7 +28,7 @@ export interface DiscoveryInput {
      * @nullable
      */
   description?: string | null;
-  status: DiscoveryInputStatus;
+  status?: DiscoveryInputStatus;
   /**
      * @items.minLength 1
      * @items.maxLength 80

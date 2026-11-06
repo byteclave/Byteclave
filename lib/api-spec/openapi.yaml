@@ -220,6 +220,197 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /admin/publishing:
+    get:
+      operationId: getAdminPublishingQueue
+      tags: [admin-content]
+      summary: List discoveries and publishing history
+      security:
+        - AdminCookie: []
+      responses:
+        "200":
+          description: Publishing queue and recent decisions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishingQueue"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/discoveries/{id}/preview:
+    get:
+      operationId: getAdminDiscoveryPreview
+      tags: [admin-content]
+      summary: Preview a discovery without publishing it
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Discovery preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Discovery"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /admin/discoveries/{id}/publishing-action:
+    post:
+      operationId: performAdminPublishingAction
+      tags: [admin-content]
+      summary: Submit, review, publish, unpublish, archive, or restore a discovery
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishingAction"
+      responses:
+        "200":
+          description: Publishing action completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Discovery"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /admin/versions:
+    get:
+      operationId: listAdminContentVersions
+      tags: [admin-content]
+      summary: Inspect recorded content versions
+      security:
+        - AdminCookie: []
+      parameters:
+        - name: entityType
+          in: query
+          schema:
+            type: string
+            enum: [discovery, category, subcategory, tag, collection]
+        - name: entityId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+      responses:
+        "200":
+          description: Version snapshots
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentVersionList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /admin/versions/{versionId}/restore:
+    post:
+      operationId: restoreAdminContentVersion
+      tags: [admin-content]
+      summary: Restore a version as a new recorded change
+      security:
+        - AdminCookie: []
+      parameters:
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Restoration completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionRestoreResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /catalog/appearance:
+    get:
+      operationId: getPublicAppearance
+      tags: [public-catalog]
+      summary: Get supported public appearance settings
+      responses:
+        "200":
+          description: Public homepage and footer copy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppearanceSettings"
+  /admin/appearance:
+    get:
+      operationId: getAdminAppearance
+      tags: [admin-content]
+      summary: Get editable appearance settings
+      security:
+        - AdminCookie: []
+      responses:
+        "200":
+          description: Supported appearance settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppearanceSettings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateAdminAppearance
+      tags: [admin-content]
+      summary: Update supported appearance settings
+      security:
+        - AdminCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppearanceSettings"
+      responses:
+        "200":
+          description: Appearance settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppearanceSettings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /admin/discoveries:
     post:
       operationId: createDiscovery
@@ -768,7 +959,6 @@ components:
         url: { type: string }
         summary: { type: ["string", "null"] }
         description: { type: ["string", "null"] }
-        status: { type: string, enum: [draft, review, published, archived] }
         tags:
           type: array
           items: { $ref: "#/components/schemas/Tag" }
@@ -798,7 +988,7 @@ components:
               subcategoryId: { type: ["string", "null"], format: uuid }
               sortOrder: { type: integer, minimum: 0 }
             required: [categoryId, subcategoryId, sortOrder]
-      required: [title, url, status, tags, placements]
+      required: [title, url, tags, placements]
     DiscoveryWriteResult:
       type: object
       properties:
@@ -901,6 +1091,79 @@ components:
           type: array
           items: { $ref: "#/components/schemas/Collection" }
       required: [discoveries, categories, tags, collections]
+    PublishingAction:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [submit_for_review, approve, reject, unpublish, archive, restore]
+        note:
+          type: string
+          maxLength: 1000
+      required: [action]
+    PublishingQueue:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              slug: { type: string }
+              title: { type: string }
+              summary: { type: ["string", "null"] }
+              description: { type: ["string", "null"] }
+              url: { type: string, format: uri }
+              status: { type: string, enum: [draft, review, published, archived] }
+              updatedAt: { type: string, format: date-time }
+            required: [id, slug, title, summary, description, url, status, updatedAt]
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              discoveryId: { type: string }
+              fromStatus: { type: string, enum: [draft, review, published, archived] }
+              toStatus: { type: string, enum: [draft, review, published, archived] }
+              actorUserId: { type: ["string", "null"] }
+              actorEmail: { type: ["string", "null"] }
+              note: { type: ["string", "null"] }
+              createdAt: { type: string, format: date-time }
+            required: [id, discoveryId, fromStatus, toStatus, actorUserId, actorEmail, note, createdAt]
+      required: [items, history]
+    ContentVersion:
+      type: object
+      properties:
+        id: { type: string }
+        entityType: { type: string, enum: [discovery, category, subcategory, tag, collection] }
+        entityId: { type: string }
+        action: { type: string, enum: [created, updated, deleted, restored] }
+        snapshot: { type: object, additionalProperties: true }
+        sourceVersionId: { type: ["string", "null"] }
+        actorUserId: { type: ["string", "null"] }
+        actorEmail: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+      required: [id, entityType, entityId, action, snapshot, sourceVersionId, actorUserId, actorEmail, createdAt]
+    ContentVersionList:
+      type: array
+      items: { $ref: "#/components/schemas/ContentVersion" }
+    VersionRestoreResult:
+      type: object
+      properties:
+        entityType: { type: string, enum: [discovery, category, subcategory, tag, collection] }
+        entityId: { type: string }
+        restoredFromVersionId: { type: string }
+      required: [entityType, entityId, restoredFromVersionId]
+    AppearanceSettings:
+      type: object
+      properties:
+        homepageEyebrow: { type: string, maxLength: 120 }
+        homepageHeadline: { type: string, minLength: 1, maxLength: 180 }
+        homepageDescription: { type: string, maxLength: 1000 }
+        footerText: { type: string, maxLength: 180 }
+      required: [homepageEyebrow, homepageHeadline, homepageDescription, footerText]
     ExploreCatalog:
       type: object
       properties:
