@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getGetAdminAppearanceQueryKey,
+  getGetPublicAppearanceQueryKey,
   getGetAdminCatalogQueryKey,
   getGetAdminPublishingQueueQueryKey,
   getListAdminContentVersionsQueryKey,
@@ -100,7 +101,7 @@ function Notice({ error, success }: { error: string; success: string }) {
   );
 }
 
-export function MediaAdminSection() {
+export function MediaAdminSection({ canManage }: { canManage: boolean }) {
   const queryClient = useQueryClient();
   const media = useQuery({
     queryKey: mediaQueryKey,
@@ -231,7 +232,7 @@ export function MediaAdminSection() {
 
   return (
     <div className="admin-stack admin-workspace">
-      <section className="admin-panel" aria-labelledby="media-upload-heading">
+      {canManage && <section className="admin-panel" aria-labelledby="media-upload-heading">
         <div className="admin-panel-heading">
           <div>
             <p className="admin-kicker">Library intake</p>
@@ -242,7 +243,7 @@ export function MediaAdminSection() {
         <form className="admin-form admin-workspace-upload" onSubmit={(event) => void upload(event)}>
           <label>
             Choose a file
-            <input ref={fileInput} type="file" required aria-label="File to upload" />
+            <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" required aria-label="File to upload" />
           </label>
           <label>
             Alternative text
@@ -261,7 +262,7 @@ export function MediaAdminSection() {
           </div>
           <Notice error={error} success={success} />
         </form>
-      </section>
+      </section>}
 
       <section className="admin-panel" aria-labelledby="media-library-heading">
         <div className="admin-panel-heading">
@@ -301,7 +302,7 @@ export function MediaAdminSection() {
                     <span className="admin-media-name">{asset.fileName}</span>
                     <span className="admin-table-secondary">{bytesLabel(asset.sizeBytes)} · {asset.contentType}</span>
                   </button>
-                  <button
+                  {canManage && <button
                     type="button"
                     className="admin-table-action danger-action admin-media-delete"
                     disabled={busy}
@@ -309,7 +310,7 @@ export function MediaAdminSection() {
                     aria-label={`Delete ${asset.fileName}`}
                   >
                     Delete
-                  </button>
+                  </button>}
                 </article>
               ))}
             </div>
@@ -328,14 +329,14 @@ export function MediaAdminSection() {
                 <form className="admin-form" onSubmit={(event) => void saveAsset(event)}>
                   <label>
                     Alternative text
-                    <input value={altText} onChange={(event) => setAltText(event.target.value)} maxLength={500} />
+                    <input value={altText} onChange={(event) => setAltText(event.target.value)} maxLength={500} disabled={!canManage} />
                   </label>
                   <label>
                     Linked discovery
                     <select
                       value={discoveryId}
                       onChange={(event) => setDiscoveryId(event.target.value)}
-                      disabled={catalog.isLoading || catalog.isError || !catalog.data}
+                      disabled={!canManage || catalog.isLoading || catalog.isError || !catalog.data}
                     >
                       <option value="">Not linked</option>
                       {catalog.data?.discoveries.map((discovery) => (
@@ -345,9 +346,9 @@ export function MediaAdminSection() {
                   </label>
                   {catalog.isError && <p className="admin-form-help" role="status">Discovery linking is unavailable until the catalog loads.</p>}
                   <div className="admin-form-actions">
-                    <button className="admin-primary-button" type="submit" disabled={busy}>
+                    {canManage && <button className="admin-primary-button" type="submit" disabled={busy}>
                       {busy ? "Saving…" : "Save details"}
-                    </button>
+                    </button>}
                     <button className="admin-secondary-button" type="button" onClick={() => void copyMediaUrl()}>
                       Copy URL
                     </button>
@@ -385,7 +386,13 @@ function StatusPill({ status }: { status: string }) {
   return <span className={`status-pill status-${status}`}>{status}</span>;
 }
 
-export function PublishingAdminSection() {
+export function PublishingAdminSection({
+  canReview,
+  canPublish,
+}: {
+  canReview: boolean;
+  canPublish: boolean;
+}) {
   const queryClient = useQueryClient();
   const queue = useGetAdminPublishingQueue({
     query: { enabled: true, queryKey: getGetAdminPublishingQueueQueryKey() },
@@ -498,7 +505,13 @@ export function PublishingAdminSection() {
                     <textarea value={note} maxLength={1000} rows={3} onChange={(event) => setNote(event.target.value)} />
                   </label>
                   <div className="admin-form-actions">
-                    {actionsForStatus(selected.status).map((nextAction) => (
+                    {actionsForStatus(selected.status)
+                      .filter((nextAction) =>
+                        nextAction === "submit_for_review" || nextAction === "reject"
+                          ? canReview
+                          : canPublish,
+                      )
+                      .map((nextAction) => (
                       <button
                         type="button"
                         key={nextAction}
@@ -574,7 +587,7 @@ function snapshotSummary(version: ContentVersion) {
   return label;
 }
 
-export function VersionsAdminSection() {
+export function VersionsAdminSection({ canRestore }: { canRestore: boolean }) {
   const queryClient = useQueryClient();
   const [entityType, setEntityType] = useState("");
   const [entityId, setEntityId] = useState("");
@@ -688,12 +701,12 @@ export function VersionsAdminSection() {
                   <summary>Inspect snapshot data</summary>
                   <pre>{JSON.stringify(selected.snapshot, null, 2)}</pre>
                 </details>
-                <div className="admin-form-actions admin-version-actions">
+                {canRestore && <div className="admin-form-actions admin-version-actions">
                   <button className="admin-primary-button" type="button" onClick={() => restoreSnapshot(selected)} disabled={restore.isPending}>
                     {restore.isPending ? "Restoring…" : "Restore this version"}
                   </button>
                   <p className="admin-form-help">Restore creates a new change; it does not erase later history.</p>
-                </div>
+                </div>}
               </article>
             )}
           </div>
@@ -751,6 +764,7 @@ export function AppearanceAdminSection() {
         onSuccess: (saved) => {
           setForm(saved);
           queryClient.setQueryData(getGetAdminAppearanceQueryKey(), saved);
+          queryClient.setQueryData(getGetPublicAppearanceQueryKey(), saved);
           setSuccess("Homepage copy and footer text saved.");
         },
         onError: (saveError) => setError(friendlyError(saveError)),

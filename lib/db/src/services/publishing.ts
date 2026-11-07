@@ -5,7 +5,8 @@ import {
   InvalidPublishingTransitionError,
 } from "@workspace/domain/services";
 import { getDb } from "../index";
-import { auditLogs, discoveries, publishingRecords } from "../schema/index";
+import { discoveries, publishingRecords } from "../schema/index";
+import { recordContentAudit } from "./content-management";
 
 export class DiscoveryNotFoundError extends Error {
   constructor(discoveryId: string) {
@@ -49,7 +50,7 @@ export async function transitionDiscovery(
       actorUserId,
       note: transition.note ?? null,
     });
-    await tx.insert(auditLogs).values({
+    await recordContentAudit(tx, {
       actorUserId,
       entityType: "discovery",
       entityId: transition.discoveryId,

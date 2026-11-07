@@ -1,4 +1,4 @@
-import { Router, type RequestHandler } from "express";
+import express, { Router, type RequestHandler } from "express";
 import {
   CreateCategoryBody,
   CreateCollectionBody,
@@ -83,6 +83,14 @@ import {
   updateSecuritySettings,
   updateSubcategory,
   updateTag,
+  deleteManagedMedia,
+  getMediaForDelivery,
+  listManagedMedia,
+  updateManagedMedia,
+  uploadManagedMedia,
+  MediaConflictError,
+  MediaNotFoundError,
+  InvalidMediaFileError,
 } from "@workspace/db";
 import { hasPermission } from "@workspace/domain";
 import type { AdminSession } from "@workspace/db/services";
@@ -215,6 +223,43 @@ publicRouter.get(
   "/catalog/appearance",
   asyncRoute(async (_request, response) => {
     response.json(GetPublicAppearanceResponse.parse(await getAppearanceSettings()));
+  }),
+);
+
+publicRouter.get(
+  "/media/:storageKey",
+  asyncRoute(async (request, response) => {
+    const asset = await getMediaForDelivery(routeParam(request, "storageKey"));
+    if (!asset.publicDiscovery) {
+      const session = await getAdminSession(sessionToken(request));
+      if (!session) {
+        response.status(401).json({ error: "Sign in to view this media asset." });
+        return;
+      }
+      if (!hasPermission(session.permissions, "media:read")) {
+        response.status(403).json({ error: "You do not have permission to view this media asset." });
+        return;
+      }
+    }
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader(
+      "Content-Security-Policy",
+      "default-src 'none'; sandbox",
+    );
+    response.setHeader("Content-Type", asset.contentType);
+    const fallbackName = asset.fileName.replace(/[^\x20-\x7e]|["\\]/gu, "_");
+    response.setHeader(
+      "Content-Disposition",
+      `inline; filename="${fallbackName}"; filename*=UTF-8''${encodeURIComponent(asset.fileName)}`,
+    );
+    response.setHeader("Content-Length", String(asset.sizeBytes));
+    asset.stream.on("error", (error) => {
+      if (!response.headersSent) response.status(404);
+      response.end();
+      request.log?.warn({ err: error }, "Media stream ended unexpectedly");
+    });
+    asset.stream.pipe(response);
   }),
 );
 
@@ -383,6 +428,65 @@ authRouter.post(
 );
 
 contentRouter.use(sameOriginForWrites);
+contentRouter.get(
+  "/admin/media",
+  requirePermission("media:read"),
+  asyncRoute(async (_request, response) => {
+    response.json(await listManagedMedia());
+  }),
+);
+contentRouter.post(
+  "/admin/media",
+  requirePermission("media:manage"),
+  express.raw({ type: "application/octet-stream", limit: "10mb" }),
+  asyncRoute(async (request, response) => {
+    const decodeHeader = (name: string, required = true): string => {
+      const value = request.get(name);
+      if (required && (value === undefined || !value)) {
+        throw new InvalidMediaFileError(`The ${name} header is required.`);
+      }
+      try {
+        return decodeURIComponent(value ?? "");
+      } catch {
+        throw new InvalidMediaFileError(`The ${name} header is invalid.`);
+      }
+    };
+    const fileName = decodeHeader("x-upload-filename");
+    const contentType = request.get("x-upload-content-type") || "";
+    const rawBody = request.body;
+    if (!Buffer.isBuffer(rawBody)) {
+      throw new InvalidMediaFileError("Upload data must use application/octet-stream.");
+    }
+    const asset = await uploadManagedMedia(
+      { fileName, contentType, sizeBytes: rawBody.length },
+      rawBody,
+      actor(request).userId,
+      decodeHeader("x-upload-alt-text", false),
+    );
+    response.status(201).json(asset);
+  }),
+);
+contentRouter.patch(
+  "/admin/media/:id",
+  requirePermission("media:manage"),
+  asyncRoute(async (request, response) => {
+    response.json(
+      await updateManagedMedia(
+        routeParam(request, "id"),
+        request.body,
+        actor(request).userId,
+      ),
+    );
+  }),
+);
+contentRouter.delete(
+  "/admin/media/:id",
+  requirePermission("media:manage"),
+  asyncRoute(async (request, response) => {
+    await deleteManagedMedia(routeParam(request, "id"), actor(request).userId);
+    response.status(204).end();
+  }),
+);
 contentRouter.get(
   "/admin/overview",
   requirePermission("catalog:read"),
@@ -822,6 +926,22 @@ export function contentErrorHandler(
   }
   const name = error instanceof Error ? error.name : "";
   const message = error instanceof Error ? error.message : "Request failed.";
+  if (name === "InvalidMediaFileError" || name === "ZodError") {
+    response.status(400).json({ error: message });
+    return;
+  }
+  if (name === "MediaConflictError" || name === "ContentConflictError") {
+    response.status(409).json({ error: message });
+    return;
+  }
+  if (name === "MediaNotFoundError" || name === "ContentNotFoundError") {
+    response.status(404).json({ error: message });
+    return;
+  }
+  if ((error as { type?: string }).type === "entity.too.large") {
+    response.status(413).json({ error: "The uploaded file exceeds the 10 MB limit." });
+    return;
+  }
   if (name === "PermissionDeniedError") {
     response.status(403).json({ error: message });
     return;

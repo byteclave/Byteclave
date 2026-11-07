@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type DiscoveryInputStatus = typeof DiscoveryInputStatus[keyof typeof DiscoveryInputStatus];
+export type DiscoveryStatus = typeof DiscoveryStatus[keyof typeof DiscoveryStatus];
 
 
-export const DiscoveryInputStatus = {
+export const DiscoveryStatus = {
   draft: 'draft',
   review: 'review',
   published: 'published',

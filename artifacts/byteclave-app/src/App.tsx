@@ -4,17 +4,24 @@ import {
   getGetAdminCatalogQueryKey, getGetAdminOverviewQueryKey, getGetAdminSessionQueryKey,
   getGetExploreCatalogQueryKey, getGetPublicCategoryQueryKey, getGetPublicCollectionQueryKey,
   getGetPublicDiscoveryQueryKey, getGetPublicSubcategoryQueryKey, getSearchPublishedCatalogQueryKey,
+  getGetPublicAppearanceQueryKey,
   useCreateCategory, useCreateCollection, useCreateDiscovery, useCreateSubcategory, useCreateTag,
   useDeleteCategory, useDeleteCollection, useDeleteDiscovery, useDeleteSubcategory, useDeleteTag,
   useGetAdminCatalog, useGetAdminOverview, useGetAdminSession, useGetExploreCatalog,
   useGetPublicCategory, useGetPublicCollection, useGetPublicDiscovery, useGetPublicSubcategory,
-  useLoginAdmin, useLogoutAdmin, useSearchPublishedCatalog, useUpdateCategory, useUpdateCollection,
+  useGetPublicAppearance, useLoginAdmin, useLogoutAdmin, useSearchPublishedCatalog, useUpdateCategory, useUpdateCollection,
   useUpdateDiscovery, useUpdateSubcategory, useUpdateTag,
 } from '@workspace/api-client-react';
 import type { AdminCatalog, Category, Collection, Discovery, DiscoveryInput, Subcategory } from '@workspace/api-client-react';
 import { Link, Route, Router as WouterRouter, Switch, useLocation, useRoute } from 'wouter';
 import { BrandMotion } from '@/components/brand-motion';
 import { AdminAuditTable } from '@/components/admin-audit-table';
+import {
+  AppearanceAdminSection,
+  MediaAdminSection,
+  PublishingAdminSection,
+  VersionsAdminSection,
+} from '@/components/admin-workspaces';
 import { AdminAccountForm, OwnerSecurityForm } from '@/components/admin-forms';
 import { AdminUserManagement, type AdminUserRow } from '@/components/admin-user-management';
 import NotFound from '@/pages/not-found';
@@ -42,6 +49,10 @@ const invalidateCatalog = (qc: ReturnType<typeof useQueryClient>) => {
 function SiteShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [path] = useLocation();
+  const appearance = useGetPublicAppearance({
+    query: { queryKey: getGetPublicAppearanceQueryKey() },
+  });
+  const footerText = appearance.data?.footerText || 'ByteClave · An open catalog for digital resources.';
   useEffect(() => { if (open) document.getElementById('site-nav-close')?.focus(); }, [open]);
   return <div className="site-shell">
     <a className="skip-link" href="#main-content">Skip to content</a>
@@ -53,10 +64,10 @@ function SiteShell({ children }: { children: ReactNode }) {
       <div className="drawer-heading"><p>Navigate ByteClave</p><button id="site-nav-close" className="drawer-close" onClick={() => setOpen(false)} aria-label="Close navigation menu">×</button></div>
       <nav className="drawer-nav">{navItems.map(([href, label], i) => <Link key={href} href={href} aria-current={path === href ? 'page' : undefined} onClick={() => setOpen(false)}><span>0{i+1}</span>{label}</Link>)}</nav>
       <div className="drawer-admin-entry"><span>For administrators</span><Link href="/admin/login" onClick={() => setOpen(false)}>Admin Login</Link></div>
-      <p className="drawer-note">An open catalog for digital resources.</p>
+      <p className="drawer-note">{appearance.data?.homepageEyebrow || 'An open catalog for digital resources'}</p>
     </aside></>}
     <main className="main-content" id="main-content">{children}</main>
-    <footer className="site-footer"><p className="footer-copy">ByteClave · An open catalog for digital resources.</p><nav className="footer-links"><Link href="/explore">Explore</Link><Link href="/search">Search</Link><Link href="/self-host">Self-host</Link></nav></footer>
+    <footer className="site-footer"><p className="footer-copy">{footerText}</p><nav className="footer-links"><Link href="/explore">Explore</Link><Link href="/search">Search</Link><Link href="/self-host">Self-host</Link></nav></footer>
   </div>;
 }
 
@@ -79,8 +90,14 @@ function DiscoveryRows({ items, empty = 'No published Discoveries are listed her
   </article></li>)}</ul>;
 }
 function HomePage() {
+  const appearance = useGetPublicAppearance({
+    query: { queryKey: getGetPublicAppearanceQueryKey() },
+  });
+  const eyebrow = appearance.data?.homepageEyebrow || 'An open catalog for digital resources';
+  const headline = appearance.data?.homepageHeadline || 'Discover resources. Understand what’s behind them.';
+  const description = appearance.data?.homepageDescription || 'Find trustworthy digital tools with useful context about what they are and how they work.';
   return <div className="container">
-    <section className="hero" aria-labelledby="home-title"><div className="hero-copy"><p className="eyebrow">An open catalog for digital resources</p><h1 id="home-title">Discover resources.<br/>Understand <em>what’s behind them.</em></h1><p className="lead">Find trustworthy digital tools with useful context about what they are and how they work.</p><div className="hero-actions"><Link className="button-link primary" href="/explore">Explore <span className="arrow">→</span></Link><Link className="button-link" href="/self-host">Self-host</Link></div><p className="search-access">Looking for something specific? <Link href="/search">Search the catalog</Link></p></div><div className="hero-visual" aria-hidden="true"><BrandMotion mode="INTRO" /></div></section>
+    <section className="hero" aria-labelledby="home-title"><div className="hero-copy"><p className="eyebrow">{eyebrow}</p><h1 id="home-title">{headline}</h1><p className="lead">{description}</p><div className="hero-actions"><Link className="button-link primary" href="/explore">Explore <span className="arrow">→</span></Link><Link className="button-link" href="/self-host">Self-host</Link></div><p className="search-access">Looking for something specific? <Link href="/search">Search the catalog</Link></p></div><div className="hero-visual" aria-hidden="true"><BrandMotion mode="INTRO" /></div></section>
     <section className="section"><div className="section-heading"><div><p className="eyebrow">A better way to browse</p><h2>Context before clicks.</h2></div><p className="section-note">An open catalog built around clarity, not rankings or hype.</p></div><div className="principles"><article className="principle"><p className="principle-index">01 / Discover</p><h3>Find what fits</h3><p>Browse tools by category, collection, or the question you came to answer.</p></article><article className="principle"><p className="principle-index">02 / Understand</p><h3>Know what it is</h3><p>Each listing carries clear descriptions and useful context before you leave.</p></article><article className="principle"><p className="principle-index">03 / Verify</p><h3>Trust the source</h3><p>Published resources are intentionally maintained and open to inspection.</p></article></div></section>
     <section className="gateway"><div><p className="eyebrow">Open catalog</p><h2>Start with the map.</h2><p>Explore the categories and collections shaping the directory.</p></div><Link className="button-link primary" href="/explore">Explore the catalog <span className="arrow">→</span></Link></section>
   </div>;
@@ -188,12 +205,26 @@ function AdminTokenPage({ mode }: { mode: 'invitation' | 'reset' }) {
   }
   return <section className="admin-auth-page"><header className="admin-auth-header"><Link className="admin-auth-brand" href="/"><BrandMotion/><span>byte<span>clave</span></span></Link><Link className="admin-auth-back" href="/">Back to public site</Link></header><div className="admin-auth-card"><p className="admin-kicker">Protected workspace</p><h1>{invitation ? 'Accept administrator invitation' : 'Reset administrator password'}</h1><p className="admin-supporting">{invitation ? 'Choose a display name and password to activate this account.' : 'Choose a new password for your administrator account.'}</p><form className="admin-form" onSubmit={submit}>{invitation && <label>Display name<input name="displayName" autoComplete="name" required maxLength={120}/></label>}<label>New password<input name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128}/></label><label>Confirm password<input name="confirmPassword" type="password" autoComplete="new-password" required minLength={12} maxLength={128}/></label>{!token && <p className="admin-form-error" role="alert">This link is missing its single-use token.</p>}{error && <p className="admin-form-error" role="alert">{error}</p>}{success && <p className="admin-form-success" role="status">{success}</p>}<button className="admin-primary-button" disabled={busy || !token}>{busy ? 'Saving…' : invitation ? 'Accept invitation' : 'Reset password'}</button></form></div></section>;
 }
-function AdminSidebar({ active, role, open, close }: { active: string; role: string; open: boolean; close: () => void }) {
-  return <><aside className={`admin-sidebar${open ? ' is-open' : ''}`}><div className="admin-brand"><Link href="/admin" onClick={close}><BrandMotion/><span>byte<span>clave</span></span></Link><p>Administration</p></div><nav aria-label="Admin sections">{adminSections.map(([id, label], i) => <Link key={id} href={id === 'overview' ? '/admin' : `/admin?section=${id}`} aria-current={id === active ? 'page' : undefined} onClick={close}><span className="admin-nav-index">{String(i+1).padStart(2,'0')}</span><span>{label}</span></Link>)}</nav><div className="admin-sidebar-footer"><span className="admin-role-indicator">{role}</span><Link href="/" onClick={close}>View public site <span>↗</span></Link></div></aside>{open && <button className="admin-sidebar-scrim" type="button" aria-label="Close admin menu" onClick={close}/>}</>;
+function AdminSidebar({ active, role, permissions, open, close }: { active: string; role: string; permissions: string[]; open: boolean; close: () => void }) {
+  const requiredPermission: Record<string, string> = {
+    discoveries: 'discoveries:manage',
+    taxonomy: 'categories:manage',
+    tags: 'categories:manage',
+    collections: 'categories:manage',
+    media: 'media:read',
+    publishing: 'catalog:read',
+    versions: 'versions:read',
+    users: 'users:read',
+    audit: 'audit:read',
+    appearance: 'appearance:manage',
+    settings: 'admin:access',
+  };
+  const visibleSections = adminSections.filter(([id]) => !requiredPermission[id] || permissions.includes(requiredPermission[id]));
+  return <><aside className={`admin-sidebar${open ? ' is-open' : ''}`}><div className="admin-brand"><Link href="/admin" onClick={close}><BrandMotion/><span>byte<span>clave</span></span></Link><p>Administration</p></div><nav aria-label="Admin sections">{visibleSections.map(([id, label], i) => <Link key={id} href={id === 'overview' ? '/admin' : `/admin?section=${id}`} aria-current={id === active ? 'page' : undefined} onClick={close}><span className="admin-nav-index">{String(i+1).padStart(2,'0')}</span><span>{label}</span></Link>)}</nav><div className="admin-sidebar-footer"><span className="admin-role-indicator">{role}</span><Link href="/" onClick={close}>View public site <span>↗</span></Link></div></aside>{open && <button className="admin-sidebar-scrim" type="button" aria-label="Close admin menu" onClick={close}/>}</>;
 }
-function AdminFrame({ children, active, session }: { children: ReactNode; active: string; session: { displayName: string; email: string; roles: string[] } }) {
+function AdminFrame({ children, active, session }: { children: ReactNode; active: string; session: AdminSessionView }) {
   const [, setLocation] = useLocation(); const qc = useQueryClient(); const logout = useLogoutAdmin(); const role = session.roles[0] || 'EDITOR'; const [menuOpen, setMenuOpen] = useState(false);
-  return <div className="admin-frame"><AdminSidebar active={active} role={role} open={menuOpen} close={() => setMenuOpen(false)}/><div className="admin-main-column"><header className="admin-topbar"><button className="admin-mobile-toggle" type="button" aria-expanded={menuOpen} aria-controls="admin-sidebar" onClick={() => setMenuOpen(v => !v)}>Admin menu</button><div><span className="admin-topbar-kicker">ByteClave / Admin</span><span className="admin-topbar-user">{session.displayName} · {role}</span></div><div className="admin-topbar-actions"><Link className="admin-topbar-public" href="/">Public site ↗</Link><button className="admin-secondary-button" onClick={() => logout.mutate(undefined, { onSuccess: () => { qc.clear(); setLocation('/admin/login'); }, onError: e => window.alert(errText(e)) })} disabled={logout.isPending}>{logout.isPending ? 'Signing out…' : 'Sign out'}</button></div></header><main className="admin-main"><div className="admin-page-heading"><div><p className="admin-kicker">Secure management</p><h1>{adminSections.find(([s]) => s === active)?.[1] || 'Overview'}</h1><p className="admin-supporting">Signed in as {session.email}</p></div><span className={`admin-role-indicator role-${role.toLowerCase()}`}>{role}</span></div>{children}<footer className="admin-page-footer"><span>ByteClave · Access is checked for every administrative request.</span><Link href="/">Return to public site</Link></footer></main></div></div>;
+  return <div className="admin-frame"><AdminSidebar active={active} role={role} permissions={session.permissions} open={menuOpen} close={() => setMenuOpen(false)}/><div className="admin-main-column"><header className="admin-topbar"><button className="admin-mobile-toggle" type="button" aria-expanded={menuOpen} aria-controls="admin-sidebar" onClick={() => setMenuOpen(v => !v)}>Admin menu</button><div><span className="admin-topbar-kicker">ByteClave / Admin</span><span className="admin-topbar-user">{session.displayName} · {role}</span></div><div className="admin-topbar-actions"><Link className="admin-topbar-public" href="/">Public site ↗</Link><button className="admin-secondary-button" onClick={() => logout.mutate(undefined, { onSuccess: () => { qc.clear(); setLocation('/admin/login'); }, onError: e => window.alert(errText(e)) })} disabled={logout.isPending}>{logout.isPending ? 'Signing out…' : 'Sign out'}</button></div></header><main className="admin-main"><div className="admin-page-heading"><div><p className="admin-kicker">Secure management</p><h1>{adminSections.find(([s]) => s === active)?.[1] || 'Overview'}</h1><p className="admin-supporting">Signed in as {session.email}</p></div><span className={`admin-role-indicator role-${role.toLowerCase()}`}>{role}</span></div>{children}<footer className="admin-page-footer"><span>ByteClave · Access is checked for every administrative request.</span><Link href="/">Return to public site</Link></footer></main></div></div>;
 }
 function AdminGate() {
   const session = useGetAdminSession({ query: { queryKey: getGetAdminSessionQueryKey(), retry: false } });
@@ -203,7 +234,7 @@ function AdminGate() {
   return <AdminFrame active={section} session={session.data}><AdminContent section={section} session={session.data}/></AdminFrame>;
 }
 
-type AdminSessionView = { displayName: string; email: string; roles: string[] };
+type AdminSessionView = { displayName: string; email: string; roles: string[]; permissions: string[] };
 type SecuritySettingsView = { sessionHours: number; maxLoginAttempts: number; lockoutMinutes: number };
 async function adminJson<T>(path: string): Promise<T> {
   const response = await fetch(path, { credentials: 'same-origin' });
@@ -231,18 +262,7 @@ function AdminAuditSection() {
   });
   if (audit.isLoading) return <Loading label="Loading audit history"/>;
   if (audit.isError || !audit.data) return <Failure message={errText(audit.error)} retry={() => void audit.refetch()}/>;
-  return <section className="admin-panel"><p className="admin-kicker">Append-only history</p><h2>Audit Logs</h2><p className="admin-supporting">Recent authentication and security-sensitive administrative actions. Passwords and session tokens are never recorded.</p><AdminAuditTable events={audit.data}/></section>;
-}
-
-function AdminAppearanceSection() {
-  const palette = [
-    { label: 'ByteClave Blue', value: '#1E9BFF' },
-    { label: 'Neon Green', value: '#00E676' },
-    { label: 'White', value: '#FFFFFF' },
-    { label: 'Dark background', value: '#070B10' },
-    { label: 'Logo red accent', value: '#EF211D' },
-  ];
-  return <section className="admin-panel"><p className="admin-kicker">Brand system</p><h2>Appearance</h2><p className="admin-supporting">The canonical ByteClave palette is fixed to keep public and admin experiences consistent.</p><ul className="admin-palette-list">{palette.map(color => <li key={color.value}><span className="admin-palette-swatch" style={{ backgroundColor: color.value }} aria-hidden="true"/><span>{color.label}</span><code>{color.value}</code></li>)}</ul></section>;
+  return <section className="admin-panel"><p className="admin-kicker">Append-only history</p><h2>Audit Logs</h2><p className="admin-supporting">Content, media, publishing, access, and security actions are recorded with actor and time. Passwords and session tokens are never recorded.</p><AdminAuditTable events={audit.data}/></section>;
 }
 
 function AdminSettingsSection({ session }: { session: AdminSessionView }) {
@@ -273,6 +293,22 @@ function AdminContent({ section, session }: { section: string; session: AdminSes
   const overview = useGetAdminOverview({ query: { queryKey: getGetAdminOverviewQueryKey(), enabled: section === 'overview' } });
   const needsCatalog = ['discoveries', 'taxonomy', 'tags', 'collections'].includes(section);
   const catalog = useGetAdminCatalog({ query: { queryKey: getGetAdminCatalogQueryKey(), enabled: needsCatalog, refetchOnMount: 'always' } });
+  const requiredPermission: Record<string, string> = {
+    discoveries: 'discoveries:manage',
+    taxonomy: 'categories:manage',
+    tags: 'categories:manage',
+    collections: 'categories:manage',
+    media: 'media:read',
+    publishing: 'catalog:read',
+    versions: 'versions:read',
+    users: 'users:read',
+    audit: 'audit:read',
+    appearance: 'appearance:manage',
+  };
+  const required = requiredPermission[section];
+  if (required && !session.permissions.includes(required)) {
+    return <section className="admin-panel" role="alert"><p className="admin-kicker">Restricted section</p><h2>Permission required</h2><p className="admin-supporting">Your current role does not have access to this section.</p></section>;
+  }
   if (section === 'overview') {
     if (overview.isLoading) return <Loading label="Loading live catalog metrics"/>;
     if (overview.isError) return <Failure message={errText(overview.error)} retry={() => void overview.refetch()}/>;
@@ -281,7 +317,10 @@ function AdminContent({ section, session }: { section: string; session: AdminSes
   }
   if (section === 'users') return <AdminUsersSection role={session.roles[0] || 'EDITOR'}/>;
   if (section === 'audit') return <AdminAuditSection/>;
-  if (section === 'appearance') return <AdminAppearanceSection/>;
+  if (section === 'media') return <MediaAdminSection canManage={session.permissions.includes('media:manage')}/>;
+  if (section === 'publishing') return <PublishingAdminSection canReview={session.permissions.includes('publishing:review')} canPublish={session.permissions.includes('publishing:publish')}/>;
+  if (section === 'versions') return <VersionsAdminSection canRestore={session.permissions.includes('versions:restore')}/>;
+  if (section === 'appearance') return <AppearanceAdminSection/>;
   if (section === 'settings') return <AdminSettingsSection session={session}/>;
   if (!needsCatalog) return <DeferredAdminSection section={section}/>;
   if (catalog.isLoading) return <Loading label="Loading managed catalog"/>;
@@ -303,7 +342,7 @@ function DiscoveryManager({ data, refresh }: { data: AdminCatalog; refresh: () =
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); const f = new FormData(e.currentTarget);
     const placements = f.getAll('placement').map(String).filter(Boolean).map((value, i) => { const [categoryId, subcategoryId] = value.split('|'); return { categoryId, subcategoryId: subcategoryId || null, sortOrder: i }; });
-    const input: DiscoveryInput = { title: String(f.get('title')), url: String(f.get('url')), slug: String(f.get('slug') || '') || undefined, summary: String(f.get('summary') || '') || null, description: String(f.get('description') || '') || null, status: String(f.get('status')) as DiscoveryInput['status'], tags: String(f.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean), placements };
+    const input: DiscoveryInput = { title: String(f.get('title')), url: String(f.get('url')), slug: String(f.get('slug') || '') || undefined, summary: String(f.get('summary') || '') || null, description: String(f.get('description') || '') || null, tags: String(f.get('tags') || '').split(',').map(t => t.trim()).filter(Boolean), placements };
     setError(''); setNotice('');
     const done = (result: { discovery: Discovery; created: boolean; duplicate: boolean }) => { refresh(); if (result.duplicate) { setEditing(result.discovery); setNotice(`This URL already exists as “${result.discovery.title}”. Existing placements are selected below; add another placement and save to append it without duplicating existing placements.`); } else { setEditing(null); setNotice(result.created ? 'Discovery created.' : 'Discovery saved.'); } };
     if (editing) update.mutate({ id: editing.id, data: input }, { onSuccess: done, onError: er => setError(errText(er)) });
@@ -312,7 +351,7 @@ function DiscoveryManager({ data, refresh }: { data: AdminCatalog; refresh: () =
   const pending = create.isPending || update.isPending;
   return <div className="admin-stack"><section className="admin-panel"><div className="admin-panel-heading"><div><p className="admin-kicker">Content records</p><h2>{editing ? 'Edit discovery' : 'Add a discovery'}</h2></div><span className="admin-panel-count">{data.discoveries.length} total</span></div>
     <form key={editing?.id || 'new-discovery'} className="admin-form admin-content-form" onSubmit={submit}>
-      <div className="admin-form-grid"><label>Title / name<input name="title" required maxLength={180} defaultValue={editing?.title || ''} onChange={e => { if (!editing) { const slug = e.currentTarget.form?.elements.namedItem('slug') as HTMLInputElement; if (slug && !slug.dataset.edited) slug.value = slugify(e.target.value); } }} placeholder="Resource name"/></label><label>URL<input name="url" type="url" required maxLength={4096} defaultValue={editing?.url || ''} placeholder="https://example.org"/></label><label>Slug<input name="slug" maxLength={120} defaultValue={editing?.slug || ''} onInput={e => { (e.currentTarget as HTMLInputElement).dataset.edited = '1'; }} placeholder="Generated from title"/></label><label>Publication status<select name="status" defaultValue={editing?.status || 'draft'}><option value="draft">Draft</option><option value="review">Review</option><option value="published" disabled={!editing || (editing.status !== 'review' && editing.status !== 'published')}>Published (submit review first)</option><option value="archived">Archived</option></select></label><label className="span-two">Summary<textarea name="summary" maxLength={500} defaultValue={editing?.summary || ''} rows={2}/></label><label className="span-two">Description<textarea name="description" maxLength={10000} defaultValue={editing?.description || ''} rows={4}/></label><label className="span-two">Tags <span className="admin-form-help">Comma-separated; names are normalized and reused.</span><input name="tags" defaultValue={editing?.tags.map(t => t.name).join(', ') || ''}/></label></div>
+      <div className="admin-form-grid"><label>Title / name<input name="title" required maxLength={180} defaultValue={editing?.title || ''} onChange={e => { if (!editing) { const slug = e.currentTarget.form?.elements.namedItem('slug') as HTMLInputElement; if (slug && !slug.dataset.edited) slug.value = slugify(e.target.value); } }} placeholder="Resource name"/></label><label>URL<input name="url" type="url" required maxLength={4096} defaultValue={editing?.url || ''} placeholder="https://example.org"/></label><label>Slug<input name="slug" maxLength={120} defaultValue={editing?.slug || ''} onInput={e => { (e.currentTarget as HTMLInputElement).dataset.edited = '1'; }} placeholder="Generated from title"/></label><label className="span-two">Summary<textarea name="summary" maxLength={500} defaultValue={editing?.summary || ''} rows={2}/></label><label className="span-two">Description<textarea name="description" maxLength={10000} defaultValue={editing?.description || ''} rows={4}/></label><label className="span-two">Tags <span className="admin-form-help">Comma-separated; names are normalized and reused.</span><input name="tags" defaultValue={editing?.tags.map(t => t.name).join(', ') || ''}/></label></div>
       <fieldset className="placement-fieldset"><legend>Category placements</legend><p className="admin-form-help">Choose one or more placements. Existing records are never duplicated by URL.</p><div className="placement-options">{cats.map(cat => <div key={cat.id} className="placement-category"><label><input type="checkbox" name="placement" value={`${cat.id}|`} defaultChecked={editing?.placements.some(p => p.categoryId === cat.id && !p.subcategoryId)}/> {cat.name} (category root)</label>{cat.subcategories.map(sub => <label key={sub.id} className="sub-placement"><input type="checkbox" name="placement" value={`${cat.id}|${sub.id}`} defaultChecked={editing?.placements.some(p => p.subcategoryId === sub.id)}/> {sub.name}</label>)}</div>)}</div></fieldset>
       {error && <p className="admin-form-error" role="alert">{error}</p>}{notice && <p className="admin-form-success" role="status">{notice}</p>}
       <div className="admin-form-actions"><button className="admin-primary-button" disabled={pending}>{pending ? 'Saving…' : editing ? 'Save discovery' : 'Create discovery'}</button>{editing && <button className="admin-secondary-button" type="button" onClick={() => start()}>Cancel edit</button>}</div>

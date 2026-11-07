@@ -1,6 +1,7 @@
 export * from "./auth";
 export * from "./appearance-settings";
 export * from "./content-management";
+export * from "./media-management";
 export * from "./catalog";
 export * from "./owner-provisioning";
 export * from "./publishing";

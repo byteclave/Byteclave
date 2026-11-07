@@ -2,13 +2,13 @@ import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { mkdir, open, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import {
   mediaAssignmentSchema,
   mediaUploadRequestSchema,
 } from "@workspace/domain/schemas";
 import { getDb } from "../index";
-import { auditLogs, discoveries, media } from "../schema";
+import { auditLogs, discoveries, entityContentVersions, media } from "../schema";
 import { recordContentAudit } from "./content-management";
 
 const MEDIA_MAX_BYTES = 10 * 1024 * 1024;
@@ -142,9 +142,19 @@ export async function uploadManagedMedia(
   rawAltText: unknown,
 ): Promise<MediaAssetView> {
   const file = validateMediaPayload(metadata, bytes);
+  if (
+    rawAltText !== null &&
+    rawAltText !== undefined &&
+    typeof rawAltText !== "string"
+  ) {
+    throw new InvalidMediaFileError("Alternative text must be plain text.");
+  }
+  if (typeof rawAltText === "string" && rawAltText.length > 500) {
+    throw new InvalidMediaFileError("Alternative text must be 500 characters or fewer.");
+  }
   const altText =
     typeof rawAltText === "string" && rawAltText.trim()
-      ? rawAltText.trim().slice(0, 500)
+      ? rawAltText.trim()
       : null;
   const storageKey = `${randomUUID()}.${extensionByType[file.contentType]}`;
   const filePath = getSafeMediaPath(storageKey);
@@ -274,7 +284,9 @@ export async function deleteManagedMedia(
   mediaId: string,
   actorUserId: string,
 ): Promise<void> {
-  let movedFile: { original: string; tombstone: string } | null = null;
+  const movedFile: { current: { original: string; tombstone: string } | null } = {
+    current: null,
+  };
   try {
     await getDb().transaction(async (tx) => {
       const [asset] = await tx
@@ -289,6 +301,20 @@ export async function deleteManagedMedia(
           "This asset is attached to content. Unlink it before deleting.",
         );
       }
+      const [historicalReference] = await tx
+        .select({ id: entityContentVersions.id })
+        .from(entityContentVersions)
+        .where(
+          sql`${entityContentVersions.snapshot} @> ${JSON.stringify({
+            media: [{ id: asset.id }],
+          })}::jsonb`,
+        )
+        .limit(1);
+      if (historicalReference) {
+        throw new MediaConflictError(
+          "This asset is preserved in content history. Keep it so older versions can be restored safely.",
+        );
+      }
 
       const original = getSafeMediaPath(asset.storageKey);
       const tombstone = path.join(
@@ -297,7 +323,7 @@ export async function deleteManagedMedia(
       );
       try {
         await rename(original, tombstone);
-        movedFile = { original, tombstone };
+        movedFile.current = { original, tombstone };
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") {
           throw new MediaNotFoundError("The stored file is missing; the asset was not deleted.");
@@ -322,12 +348,12 @@ export async function deleteManagedMedia(
       });
     });
   } catch (error) {
-    if (movedFile) {
-      await rename(movedFile.tombstone, movedFile.original).catch(() => undefined);
+    if (movedFile.current) {
+      await rename(movedFile.current.tombstone, movedFile.current.original).catch(() => undefined);
     }
     throw error;
   }
-  if (movedFile) await rm(movedFile.tombstone, { force: true });
+  if (movedFile.current) await rm(movedFile.current.tombstone, { force: true });
 }
 
 export async function getMediaForDelivery(storageKey: string) {
@@ -338,6 +364,7 @@ export async function getMediaForDelivery(storageKey: string) {
       storageKey: media.storageKey,
       fileName: media.fileName,
       contentType: media.contentType,
+      sizeBytes: media.sizeBytes,
       discoveryId: media.discoveryId,
     })
     .from(media)

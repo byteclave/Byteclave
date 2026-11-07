@@ -19,6 +19,7 @@ import {
   discoveryPlacements,
   discoveryTags,
   entityContentVersions,
+  media,
   publishingRecords,
   subcategories,
   tags,
@@ -251,10 +252,62 @@ async function replaceDiscoveryPlacements(
   }
 }
 
-async function recordAudit(
+async function replaceDiscoveryMedia(
+  tx: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0],
+  discoveryId: string,
+  mediaIds: string[],
+): Promise<void> {
+  const requestedIds = [...new Set(mediaIds)];
+  const current = await tx
+    .select({ id: media.id })
+    .from(media)
+    .where(eq(media.discoveryId, discoveryId))
+    .for("update");
+  const requested = requestedIds.length
+    ? await tx
+        .select({ id: media.id, discoveryId: media.discoveryId })
+        .from(media)
+        .where(inArray(media.id, requestedIds))
+        .for("update")
+    : [];
+  if (requested.length !== requestedIds.length) {
+    throw new ContentConflictError(
+      "A media asset from this version no longer exists.",
+    );
+  }
+  if (
+    requested.some(
+      (asset) => asset.discoveryId !== null && asset.discoveryId !== discoveryId,
+    )
+  ) {
+    throw new ContentConflictError(
+      "A media asset from this version is attached to different content.",
+    );
+  }
+  const requestedSet = new Set(requestedIds);
+  const now = new Date();
+  for (const asset of current) {
+    if (!requestedSet.has(asset.id)) {
+      await tx
+        .update(media)
+        .set({ discoveryId: null, updatedAt: now })
+        .where(eq(media.id, asset.id));
+    }
+  }
+  for (const asset of requested) {
+    if (asset.discoveryId !== discoveryId) {
+      await tx
+        .update(media)
+        .set({ discoveryId, updatedAt: now })
+        .where(eq(media.id, asset.id));
+    }
+  }
+}
+
+export async function recordContentAudit(
   tx: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0],
   input: {
-    actorUserId: string;
+    actorUserId: string | null;
     entityType: string;
     entityId: string;
     action: string;
@@ -274,7 +327,10 @@ async function recordAudit(
     actionName === "created" || actionName === "deleted" ||
     actionName === "restored" || actionName === "updated"
       ? actionName
-      : null;
+      : input.entityType === "discovery" &&
+          input.action.startsWith("publishing.discovery.")
+        ? "updated"
+        : null;
   let changes = input.changes ?? {};
   if (versionAction && versionEntityTypes.has(input.entityType)) {
     const snapshot = await readContentSnapshot(
@@ -323,6 +379,8 @@ async function recordAudit(
   });
 }
 
+const recordAudit = recordContentAudit;
+
 async function readContentSnapshot(
   tx: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0],
   entityType: string,
@@ -335,7 +393,7 @@ async function readContentSnapshot(
       .where(eq(discoveries.id, entityId))
       .limit(1);
     if (!row) return null;
-    const [tagRows, placementRows] = await Promise.all([
+    const [tagRows, placementRows, mediaRows] = await Promise.all([
       tx
         .select({
           id: tags.id,
@@ -355,8 +413,20 @@ async function readContentSnapshot(
         .from(discoveryPlacements)
         .where(eq(discoveryPlacements.discoveryId, entityId))
         .orderBy(asc(discoveryPlacements.sortOrder)),
+      tx
+        .select({
+          id: media.id,
+          storageKey: media.storageKey,
+          fileName: media.fileName,
+          contentType: media.contentType,
+          sizeBytes: media.sizeBytes,
+          altText: media.altText,
+        })
+        .from(media)
+        .where(eq(media.discoveryId, entityId))
+        .orderBy(asc(media.createdAt)),
     ]);
-    return { ...row, tags: tagRows, placements: placementRows };
+    return { ...row, tags: tagRows, placements: placementRows, media: mediaRows };
   }
   if (entityType === "category") {
     const [row] = await tx
@@ -1316,6 +1386,12 @@ export async function restoreContentVersion(
           };
         },
       );
+      const mediaInput =
+        snapshot.media === undefined
+          ? []
+          : snapshotArray(snapshot.media, "media").map((asset) =>
+              snapshotText(asset, "id", 64),
+            );
       const rawStatus = snapshot.status;
       if (!["draft", "review", "published", "archived"].includes(String(rawStatus))) {
         throw new InvalidContentError("The saved version has an invalid publishing status.");
@@ -1371,6 +1447,7 @@ export async function restoreContentVersion(
       }
       await replaceDiscoveryTags(tx, entityId, tagsInput);
       await replaceDiscoveryPlacements(tx, entityId, placementInput);
+      await replaceDiscoveryMedia(tx, entityId, mediaInput);
       let currentStatus = initialStatus;
       for (const nextStatus of publishingPath(currentStatus, targetStatus)) {
         assertPublishingTransition(currentStatus, nextStatus);
@@ -1385,7 +1462,7 @@ export async function restoreContentVersion(
           actorUserId,
           note: `Restored from content version ${version.id}.`,
         });
-        await tx.insert(auditLogs).values({
+        await recordContentAudit(tx, {
           actorUserId,
           entityType: "discovery",
           entityId,

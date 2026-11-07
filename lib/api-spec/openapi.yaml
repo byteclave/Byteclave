@@ -238,6 +238,143 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /admin/media:
+    get:
+      operationId: listAdminMedia
+      tags: [admin-content]
+      summary: List managed media assets
+      security:
+        - AdminCookie: []
+      responses:
+        "200":
+          description: Media library
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MediaAsset" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: uploadAdminMedia
+      tags: [admin-content]
+      summary: Upload a validated media asset
+      security:
+        - AdminCookie: []
+      parameters:
+        - name: x-upload-filename
+          in: header
+          required: true
+          schema: { type: string, maxLength: 180 }
+        - name: x-upload-content-type
+          in: header
+          required: true
+          schema: { type: string, enum: [image/png, image/jpeg, image/webp, application/pdf] }
+        - name: x-upload-alt-text
+          in: header
+          required: false
+          schema: { type: string, maxLength: 500 }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: Asset stored and audited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MediaAsset" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          description: Upload exceeds the 10 MB limit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /admin/media/{id}:
+    patch:
+      operationId: updateAdminMedia
+      tags: [admin-content]
+      summary: Update media details or content assignment
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MediaAssignmentInput"
+      responses:
+        "200":
+          description: Updated media asset
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MediaAsset" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteAdminMedia
+      tags: [admin-content]
+      summary: Delete an unreferenced media asset
+      security:
+        - AdminCookie: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Asset deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /media/{storageKey}:
+    get:
+      operationId: getMediaAsset
+      tags: [public-catalog]
+      summary: Fetch media attached to published content or accessible to an administrator
+      security:
+        - {}
+        - AdminCookie: []
+      parameters:
+        - name: storageKey
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Media asset bytes
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+            application/pdf:
+              schema: { type: string, format: binary }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /admin/discoveries/{id}/preview:
     get:
       operationId: getAdminDiscoveryPreview
@@ -959,6 +1096,7 @@ components:
         url: { type: string }
         summary: { type: ["string", "null"] }
         description: { type: ["string", "null"] }
+        status: { type: string, enum: [draft, review, published, archived] }
         tags:
           type: array
           items: { $ref: "#/components/schemas/Tag" }
@@ -974,7 +1112,6 @@ components:
         url: { type: string, format: uri, maxLength: 4096 }
         summary: { type: ["string", "null"], maxLength: 500 }
         description: { type: ["string", "null"], maxLength: 10000 }
-        status: { type: string, enum: [draft, review, published, archived] }
         tags:
           type: array
           items: { type: string, minLength: 1, maxLength: 80 }
@@ -989,6 +1126,26 @@ components:
               sortOrder: { type: integer, minimum: 0 }
             required: [categoryId, subcategoryId, sortOrder]
       required: [title, url, tags, placements]
+    MediaAsset:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        discoveryId: { type: ["string", "null"], format: uuid }
+        storageKey: { type: string }
+        fileName: { type: string }
+        contentType: { type: string, enum: [image/png, image/jpeg, image/webp, application/pdf] }
+        sizeBytes: { type: integer }
+        altText: { type: ["string", "null"] }
+        createdByUserId: { type: ["string", "null"], format: uuid }
+        createdAt: { type: string, format: date-time }
+        mediaUrl: { type: string }
+      required: [id, discoveryId, storageKey, fileName, contentType, sizeBytes, altText, createdByUserId, createdAt, mediaUrl]
+    MediaAssignmentInput:
+      type: object
+      properties:
+        discoveryId: { type: ["string", "null"], format: uuid }
+        altText: { type: ["string", "null"], maxLength: 500 }
+      required: [discoveryId, altText]
     DiscoveryWriteResult:
       type: object
       properties:

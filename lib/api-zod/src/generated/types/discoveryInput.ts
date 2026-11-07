@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DiscoveryInputPlacementsItem } from './discoveryInputPlacementsItem';
-import type { DiscoveryInputStatus } from './discoveryInputStatus';
 
 export interface DiscoveryInput {
   /** @maxLength 120 */
@@ -28,7 +27,6 @@ export interface DiscoveryInput {
      * @nullable
      */
   description?: string | null;
-  status?: DiscoveryInputStatus;
   /**
      * @items.minLength 1
      * @items.maxLength 80

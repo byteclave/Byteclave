@@ -44,10 +44,13 @@ import type {
   DiscoveryInput,
   DiscoveryPage,
   DiscoveryWriteResult,
+  ErrorResponse,
   ExploreCatalog,
   ForbiddenResponse,
   HealthStatus,
   ListAdminContentVersionsParams,
+  MediaAsset,
+  MediaAssignmentInput,
   NotFoundResponse,
   OkResponse,
   PublishingAction,
@@ -1367,6 +1370,459 @@ export function useGetAdminPublishingQueue<TData = Awaited<ReturnType<typeof get
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetAdminPublishingQueueQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminMediaUrl = () => {
+
+
+
+
+  return `/api/admin/media`
+}
+
+/**
+ * @summary List managed media assets
+ */
+export const listAdminMedia = async ( options?: Parameters<typeof customFetch>[1]): Promise<MediaAsset[]> => {
+
+  return customFetch<MediaAsset[]>(getListAdminMediaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminMediaQueryKey = () => {
+    return [
+    `/api/admin/media`
+    ] as const;
+    }
+
+
+export const getListAdminMediaQueryOptions = <TData = Awaited<ReturnType<typeof listAdminMedia>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminMediaQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminMedia>>> = ({ signal }) => listAdminMedia({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminMedia>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminMediaQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminMedia>>>
+export type ListAdminMediaQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+export function useListAdminMedia<TData = Awaited<ReturnType<typeof listAdminMedia>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminMedia>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminMedia>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminMedia>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminMedia<TData = Awaited<ReturnType<typeof listAdminMedia>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminMedia>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminMedia>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminMedia>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminMedia<TData = Awaited<ReturnType<typeof listAdminMedia>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List managed media assets
+ */
+
+export function useListAdminMedia<TData = Awaited<ReturnType<typeof listAdminMedia>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminMedia>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAdminMediaQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUploadAdminMediaUrl = () => {
+
+
+
+
+  return `/api/admin/media`
+}
+
+/**
+ * @summary Upload a validated media asset
+ */
+export const uploadAdminMedia = async (uploadAdminMediaBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<MediaAsset> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<MediaAsset>(getUploadAdminMediaUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream', ...getHeaders(options?.headers) },
+    body: uploadAdminMediaBody
+  }
+);}
+
+
+
+
+
+export const getUploadAdminMediaMutationKey = () => ['uploadAdminMedia'] as const;
+
+export const getUploadAdminMediaMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadAdminMedia>>, TError,UploadAdminMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadAdminMedia>>, TError,UploadAdminMediaMutationVariables, TContext> => {
+
+const mutationKey = getUploadAdminMediaMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadAdminMedia>>, UploadAdminMediaMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  uploadAdminMedia(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadAdminMediaMutationResult = NonNullable<Awaited<ReturnType<typeof uploadAdminMedia>>>
+    export type UploadAdminMediaMutationBody = BodyType<Blob>
+    export type UploadAdminMediaMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse>
+    export type UploadAdminMediaMutationVariables = {data: BodyType<Blob>}
+
+    /**
+ * @summary Upload a validated media asset
+ */
+export const useUploadAdminMedia = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadAdminMedia>>, TError,UploadAdminMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof uploadAdminMedia>>,
+        TError,
+        UploadAdminMediaMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUploadAdminMediaMutationOptions(options), queryClient);
+    }
+
+export const getUpdateAdminMediaUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/media/${id}`
+}
+
+/**
+ * @summary Update media details or content assignment
+ */
+export const updateAdminMedia = async (id: string,
+    mediaAssignmentInput: MediaAssignmentInput, options?: Parameters<typeof customFetch>[1]): Promise<MediaAsset> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<MediaAsset>(getUpdateAdminMediaUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(mediaAssignmentInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminMediaMutationKey = () => ['updateAdminMedia'] as const;
+
+export const getUpdateAdminMediaMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMedia>>, TError,UpdateAdminMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminMedia>>, TError,UpdateAdminMediaMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdminMediaMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminMedia>>, UpdateAdminMediaMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminMedia(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminMediaMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminMedia>>>
+    export type UpdateAdminMediaMutationBody = BodyType<MediaAssignmentInput>
+    export type UpdateAdminMediaMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type UpdateAdminMediaMutationVariables = {id: string;data: BodyType<MediaAssignmentInput>}
+
+    /**
+ * @summary Update media details or content assignment
+ */
+export const useUpdateAdminMedia = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminMedia>>, TError,UpdateAdminMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminMedia>>,
+        TError,
+        UpdateAdminMediaMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdminMediaMutationOptions(options), queryClient);
+    }
+
+export const getDeleteAdminMediaUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/media/${id}`
+}
+
+/**
+ * @summary Delete an unreferenced media asset
+ */
+export const deleteAdminMedia = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminMediaUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminMediaMutationKey = () => ['deleteAdminMedia'] as const;
+
+export const getDeleteAdminMediaMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminMedia>>, TError,DeleteAdminMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminMedia>>, TError,DeleteAdminMediaMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdminMediaMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminMedia>>, DeleteAdminMediaMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminMedia(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminMediaMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminMedia>>>
+
+    export type DeleteAdminMediaMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+    export type DeleteAdminMediaMutationVariables = {id: string}
+
+    /**
+ * @summary Delete an unreferenced media asset
+ */
+export const useDeleteAdminMedia = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminMedia>>, TError,DeleteAdminMediaMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminMedia>>,
+        TError,
+        DeleteAdminMediaMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdminMediaMutationOptions(options), queryClient);
+    }
+
+export const getGetMediaAssetUrl = (storageKey: string,) => {
+
+
+
+
+  return `/api/media/${storageKey}`
+}
+
+/**
+ * @summary Fetch media attached to published content or accessible to an administrator
+ */
+export const getMediaAsset = async (storageKey: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetMediaAssetUrl(storageKey),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMediaAssetQueryKey = (storageKey: string,) => {
+    return [
+    `/api/media/${storageKey}`
+    ] as const;
+    }
+
+
+export const getGetMediaAssetQueryOptions = <TData = Awaited<ReturnType<typeof getMediaAsset>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(storageKey: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMediaAsset>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMediaAssetQueryKey(storageKey);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMediaAsset>>> = ({ signal }) => getMediaAsset(storageKey, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: storageKey !== null && storageKey !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMediaAsset>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMediaAssetQueryResult = NonNullable<Awaited<ReturnType<typeof getMediaAsset>>>
+export type GetMediaAssetQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+export function useGetMediaAsset<TData = Awaited<ReturnType<typeof getMediaAsset>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ storageKey: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMediaAsset>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMediaAsset>>,
+          TError,
+          Awaited<ReturnType<typeof getMediaAsset>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMediaAsset<TData = Awaited<ReturnType<typeof getMediaAsset>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ storageKey: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMediaAsset>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMediaAsset>>,
+          TError,
+          Awaited<ReturnType<typeof getMediaAsset>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMediaAsset<TData = Awaited<ReturnType<typeof getMediaAsset>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ storageKey: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMediaAsset>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Fetch media attached to published content or accessible to an administrator
+ */
+
+export function useGetMediaAsset<TData = Awaited<ReturnType<typeof getMediaAsset>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ storageKey: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMediaAsset>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMediaAssetQueryOptions(storageKey,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -71,6 +71,16 @@ export interface Tag {
   name: string;
 }
 
+export type DiscoveryStatus = typeof DiscoveryStatus[keyof typeof DiscoveryStatus];
+
+
+export const DiscoveryStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
 export interface Discovery {
   id: string;
   slug: string;
@@ -80,19 +90,10 @@ export interface Discovery {
   summary: string | null;
   /** @nullable */
   description: string | null;
+  status: DiscoveryStatus;
   tags: Tag[];
   placements: Placement[];
 }
-
-export type DiscoveryInputStatus = typeof DiscoveryInputStatus[keyof typeof DiscoveryInputStatus];
-
-
-export const DiscoveryInputStatus = {
-  draft: 'draft',
-  review: 'review',
-  published: 'published',
-  archived: 'archived',
-} as const;
 
 export type DiscoveryInputPlacementsItem = {
   categoryId: string;
@@ -122,13 +123,48 @@ export interface DiscoveryInput {
      * @nullable
      */
   description?: string | null;
-  status?: DiscoveryInputStatus;
   /**
      * @items.minLength 1
      * @items.maxLength 80
      */
   tags: string[];
   placements: DiscoveryInputPlacementsItem[];
+}
+
+export type MediaAssetContentType = typeof MediaAssetContentType[keyof typeof MediaAssetContentType];
+
+
+export const MediaAssetContentType = {
+  'image/png': 'image/png',
+  'image/jpeg': 'image/jpeg',
+  'image/webp': 'image/webp',
+  'application/pdf': 'application/pdf',
+} as const;
+
+export interface MediaAsset {
+  id: string;
+  /** @nullable */
+  discoveryId: string | null;
+  storageKey: string;
+  fileName: string;
+  contentType: MediaAssetContentType;
+  sizeBytes: number;
+  /** @nullable */
+  altText: string | null;
+  /** @nullable */
+  createdByUserId: string | null;
+  createdAt: string;
+  mediaUrl: string;
+}
+
+export interface MediaAssignmentInput {
+  /** @nullable */
+  discoveryId: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  altText: string | null;
 }
 
 export interface DiscoveryWriteResult {

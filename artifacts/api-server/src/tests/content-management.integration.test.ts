@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import app from "../app";
@@ -13,6 +16,7 @@ import {
   discoveryPlacements,
   getDb,
   getPool,
+  media,
   permissions,
   rolePermissions,
   roles,
@@ -78,6 +82,11 @@ test(
       "discoveries:manage",
       "publishing:review",
       "publishing:publish",
+      "media:read",
+      "media:manage",
+      "versions:read",
+      "versions:restore",
+      "audit:read",
     ];
     const permissionDescriptions: Record<string, string> = {
       "admin:access": "Integration test administrator access.",
@@ -86,6 +95,11 @@ test(
       "discoveries:manage": "Integration test discovery management.",
       "publishing:review": "Integration test review access.",
       "publishing:publish": "Integration test publish access.",
+      "media:read": "Integration test media read.",
+      "media:manage": "Integration test media management.",
+      "versions:read": "Integration test version history.",
+      "versions:restore": "Integration test version restoration.",
+      "audit:read": "Integration test audit history.",
     };
     const [role] = await database
       .select({ code: roles.code })
@@ -150,6 +164,9 @@ test(
 
     const suffix = randomUUID().slice(0, 8);
     const password = `Cms-test-${randomUUID()}-9`;
+    const originalMediaStorageDirectory = process.env.MEDIA_STORAGE_DIR;
+    const testMediaStorageDirectory = await mkdtemp(join(tmpdir(), "byteclave-cms-media-"));
+    process.env.MEDIA_STORAGE_DIR = testMediaStorageDirectory;
     const configuredOwnerId = await getConfiguredOwnerId();
     let user: { id: string };
     let email: string;
@@ -195,6 +212,7 @@ test(
       discoveries: [] as string[],
       collections: [] as string[],
       tags: [] as string[],
+      media: [] as string[],
     };
     const server = app.listen(0, "127.0.0.1");
     await once(server, "listening");
@@ -231,6 +249,23 @@ test(
       return payload as T;
     };
 
+    const testPng = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
+    const uploadMedia = async (fileName: string) =>
+      fetch(`${baseUrl}/admin/media`, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          cookie,
+          "content-type": "application/octet-stream",
+          "x-upload-filename": encodeURIComponent(fileName),
+          "x-upload-content-type": "image/png",
+          "x-upload-alt-text": "",
+        },
+        body: testPng,
+      });
+
     t.after(async () => {
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
@@ -239,6 +274,9 @@ test(
         await database
           .delete(collections)
           .where(inArray(collections.id, recordIds.collections));
+      }
+      if (recordIds.media.length > 0) {
+        await database.delete(media).where(inArray(media.id, recordIds.media));
       }
       if (recordIds.discoveries.length > 0) {
         await database
@@ -261,10 +299,18 @@ test(
       // Audit history is append-only and Owner identity is protected. This test
       // therefore requires a dedicated disposable TEST_DATABASE_URL.
       await getPool().end();
+      if (originalMediaStorageDirectory === undefined) {
+        delete process.env.MEDIA_STORAGE_DIR;
+      } else {
+        process.env.MEDIA_STORAGE_DIR = originalMediaStorageDirectory;
+      }
+      await rm(testMediaStorageDirectory, { recursive: true, force: true });
     });
 
     const unauthenticated = await call("/admin/catalog");
     await json(unauthenticated, 401);
+    await json(await call("/admin/audit"), 401);
+    await json(await call("/admin/versions"), 401);
 
     const login = await call("/admin/auth/login", "POST", { email, password });
     await json(login, 200);
@@ -336,7 +382,7 @@ test(
       url: `HTTPS://Example.org/brief/?source=${suffix}#first`,
       summary: "Temporary test content.",
       description: "This integration record is removed after the test.",
-      status: "draft",
+      status: "published",
       tags: [`CMS Research ${suffix}`],
       placements: [
         { categoryId: categoryA.id, subcategoryId: null, sortOrder: 0 },
@@ -355,6 +401,33 @@ test(
     assert.equal(created.created, true);
     assert.equal(created.discovery.status, "draft");
     assert.equal(created.discovery.placements.length, 2);
+    await json(await uploadMedia("../../unsafe.png"), 400);
+    const mediaAsset = await json<{
+      id: string;
+      mediaUrl: string;
+      fileName: string;
+    }>(await uploadMedia("catalog-image.png"), 201);
+    recordIds.media.push(mediaAsset.id);
+    await json(
+      await call(`/admin/media/${mediaAsset.id}`, "PATCH", {
+        discoveryId: created.discovery.id,
+        altText: "Catalog image",
+      }),
+      200,
+    );
+    await json(await call(`/admin/media/${mediaAsset.id}`, "DELETE"), 409);
+    const draftMedia = await fetch(new URL(mediaAsset.mediaUrl, baseUrl));
+    assert.equal(draftMedia.status, 401, "draft media must not be public");
+    const removableMedia = await json<{ id: string }>(
+      await uploadMedia("unused-image.png"),
+      201,
+    );
+    recordIds.media.push(removableMedia.id);
+    await json(
+      await call(`/admin/media/${removableMedia.id}`, "DELETE"),
+      204,
+    );
+    recordIds.media = recordIds.media.filter((id) => id !== removableMedia.id);
     const duplicate = await json<WriteResult>(
       await call("/admin/discoveries", "POST", {
         ...discoveryBody,
@@ -428,36 +501,25 @@ test(
     );
     assert.equal(draftSearch.length, 0, "drafts must not appear in public search");
 
-    let current = created.discovery;
-    const updateStatus = async (status: string) => {
-      const result = await json<WriteResult>(
-        await call(`/admin/discoveries/${current.id}`, "PATCH", {
-          slug: current.slug,
-          title: current.title,
-          url: current.url,
-          summary: current.summary,
-          description: current.description,
-          status,
-          tags: [`CMS Research ${suffix}`],
-          placements: [
-            { categoryId: categoryA.id, subcategoryId: null, sortOrder: 0 },
-            {
-              categoryId: categoryA.id,
-              subcategoryId: subcategory.id,
-              sortOrder: 0,
-            },
-          ],
-        }),
+    assert.equal(
+      created.discovery.status,
+      "draft",
+      "content requests cannot directly set a publishing status",
+    );
+    const publishingAction = async (id: string, action: string) =>
+      json<DiscoveryRecord>(
+        await call(`/admin/discoveries/${id}/publishing-action`, "POST", { action }),
         200,
       );
-      current = result.discovery;
-    };
-    await updateStatus("review");
+    await publishingAction(created.discovery.id, "submit_for_review");
     await json(
       await call(`/catalog/discoveries/${created.discovery.slug}`),
       404,
     );
-    await updateStatus("published");
+    const published = await publishingAction(created.discovery.id, "approve");
+    const publicMedia = await fetch(new URL(mediaAsset.mediaUrl, baseUrl));
+    assert.equal(publicMedia.status, 200, "media attached to published content is public");
+    await publicMedia.arrayBuffer();
 
     const archived = await json<WriteResult>(
       await call("/admin/discoveries", "POST", {
@@ -465,13 +527,14 @@ test(
         url: `https://archive.example.org/${suffix}`,
         summary: null,
         description: null,
-        status: "archived",
+        status: "published",
         tags: [],
         placements: [],
       }),
       201,
     );
     recordIds.discoveries.push(archived.discovery.id);
+    await publishingAction(archived.discovery.id, "archive");
     await json(
       await call(`/catalog/discoveries/${archived.discovery.slug}`),
       404,
@@ -499,36 +562,8 @@ test(
       201,
     );
     recordIds.discoveries.push(second.discovery.id);
-    const secondReview = await json<WriteResult>(
-      await call(`/admin/discoveries/${second.discovery.id}`, "PATCH", {
-        slug: second.discovery.slug,
-        title: second.discovery.title,
-        url: second.discovery.url,
-        summary: second.discovery.summary,
-        description: second.discovery.description,
-        status: "review",
-        tags: [],
-        placements: [
-          { categoryId: categoryA.id, subcategoryId: null, sortOrder: 1 },
-        ],
-      }),
-      200,
-    );
-    const secondPublished = await json<WriteResult>(
-      await call(`/admin/discoveries/${second.discovery.id}`, "PATCH", {
-        slug: secondReview.discovery.slug,
-        title: secondReview.discovery.title,
-        url: secondReview.discovery.url,
-        summary: secondReview.discovery.summary,
-        description: secondReview.discovery.description,
-        status: "published",
-        tags: [],
-        placements: [
-          { categoryId: categoryA.id, subcategoryId: null, sortOrder: 1 },
-        ],
-      }),
-      200,
-    );
+    await publishingAction(second.discovery.id, "submit_for_review");
+    const secondPublished = await publishingAction(second.discovery.id, "approve");
 
     const categoryPage = await json<{
       discoveries: DiscoveryRecord[];
@@ -539,7 +574,7 @@ test(
     );
     assert.deepEqual(
       categoryPage.discoveries.map((item) => item.id).sort(),
-      [created.discovery.id, secondPublished.discovery.id].sort(),
+      [published.id, secondPublished.id].sort(),
     );
     assert.equal(categoryPage.subcategories[0]?.id, subcategory.id);
     const subcategoryPage = await json<{ discoveries: DiscoveryRecord[] }>(
@@ -678,14 +713,14 @@ test(
         name: `CMS collection ${suffix}`,
         description: "Ordered integration test membership.",
         sortOrder: 4,
-        discoveryIds: [secondPublished.discovery.id, created.discovery.id],
+        discoveryIds: [secondPublished.id, created.discovery.id],
       }),
       201,
     );
     recordIds.collections.push(collection.id);
     assert.deepEqual(
       collection.discoveryIds,
-      [secondPublished.discovery.id, created.discovery.id],
+      [secondPublished.id, created.discovery.id],
     );
     const collectionPage = await json<{ discoveries: DiscoveryRecord[] }>(
       await call(`/catalog/collections/${collection.slug}`),
@@ -693,7 +728,7 @@ test(
     );
     assert.deepEqual(
       collectionPage.discoveries.map((item) => item.id),
-      [secondPublished.discovery.id, created.discovery.id],
+      [secondPublished.id, created.discovery.id],
     );
     const reorderedCollection = await json<{ discoveryIds: string[] }>(
       await call(`/admin/collections/${collection.id}`, "PATCH", {
@@ -701,13 +736,13 @@ test(
         slug: collection.slug,
         description: "Reordered test membership.",
         sortOrder: 5,
-        discoveryIds: [created.discovery.id, secondPublished.discovery.id],
+        discoveryIds: [created.discovery.id, secondPublished.id],
       }),
       200,
     );
     assert.deepEqual(
       reorderedCollection.discoveryIds,
-      [created.discovery.id, secondPublished.discovery.id],
+      [created.discovery.id, secondPublished.id],
     );
 
     const overview = await json<{
@@ -719,6 +754,46 @@ test(
     }>(await call("/admin/overview"), 200);
     assert.ok(overview.discoveries >= 2);
     assert.ok(overview.publishedDiscoveries >= 2);
+
+    const versions = await json<Array<{
+      id: string;
+      action: string;
+      entityId: string;
+      snapshot: Record<string, unknown>;
+    }>>(
+      await call(
+        `/admin/versions?entityType=discovery&entityId=${created.discovery.id}`,
+      ),
+      200,
+    );
+    const originalVersion = versions.find((version) => version.action === "created");
+    assert.ok(originalVersion, "discovery creation should create a snapshot");
+    const restored = await json<{ entityId: string; restoredFromVersionId: string }>(
+      await call(`/admin/versions/${originalVersion.id}/restore`, "POST"),
+      200,
+    );
+    assert.equal(restored.entityId, created.discovery.id);
+    assert.equal(restored.restoredFromVersionId, originalVersion.id);
+    await json(
+      await call(`/catalog/discoveries/${created.discovery.slug}`),
+      404,
+    );
+    const afterRestore = await json<Array<{ action: string }>>(
+      await call(
+        `/admin/versions?entityType=discovery&entityId=${created.discovery.id}`,
+      ),
+      200,
+    );
+    assert.equal(afterRestore[0]?.action, "restored");
+
+    const auditEvents = await json<Array<{ action: string }>>(
+      await call("/admin/audit"),
+      200,
+    );
+    assert.ok(auditEvents.some((event) => event.action === "media.uploaded"));
+    assert.ok(auditEvents.some((event) => event.action === "media.updated"));
+    assert.ok(auditEvents.some((event) => event.action === "publishing.discovery.published"));
+    assert.ok(auditEvents.some((event) => event.action === "content.discovery.restored"));
 
     await json(
       await call(`/admin/collections/${collection.id}`, "DELETE"),
@@ -735,7 +810,7 @@ test(
       (id) => id !== created.discovery.id,
     );
     await json(
-      await call(`/admin/discoveries/${secondPublished.discovery.id}`, "DELETE"),
+      await call(`/admin/discoveries/${secondPublished.id}`, "DELETE"),
       204,
     );
     await json(
@@ -743,7 +818,7 @@ test(
       204,
     );
     recordIds.discoveries = recordIds.discoveries.filter(
-      (id) => id !== secondPublished.discovery.id,
+      (id) => id !== secondPublished.id,
     );
     await json(await call(`/admin/tags/${tag.id}`, "DELETE"), 204);
     recordIds.tags = recordIds.tags.filter((id) => id !== tag.id);

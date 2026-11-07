@@ -60,6 +60,7 @@ export const SearchPublishedCatalogResponseItem = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -111,6 +112,7 @@ export const GetPublicCategoryResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -155,6 +157,7 @@ export const GetPublicSubcategoryResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -194,6 +197,7 @@ export const GetPublicCollectionResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -227,6 +231,7 @@ export const GetPublicDiscoveryResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -322,6 +327,7 @@ export const GetAdminCatalogResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -400,6 +406,103 @@ export const GetAdminPublishingQueueResponse = zod.object({
 
 
 /**
+ * @summary List managed media assets
+ */
+export const ListAdminMediaResponseItem = zod.object({
+  "id": zod.string().uuid(),
+  "discoveryId": zod.string().uuid().nullable(),
+  "storageKey": zod.string(),
+  "fileName": zod.string(),
+  "contentType": zod.enum(['image/png', 'image/jpeg', 'image/webp', 'application/pdf']),
+  "sizeBytes": zod.number().int(),
+  "altText": zod.string().nullable(),
+  "createdByUserId": zod.string().uuid().nullable(),
+  "createdAt": zod.coerce.date(),
+  "mediaUrl": zod.string()
+})
+export const ListAdminMediaResponse = zod.array(ListAdminMediaResponseItem)
+
+
+/**
+ * @summary Upload a validated media asset
+ */
+export const uploadAdminMediaHeaderXUploadFilenameMax = 180;
+
+export const uploadAdminMediaHeaderXUploadAltTextMax = 500;
+
+
+
+export const UploadAdminMediaHeader = zod.object({
+  "x-upload-filename": zod.string().max(uploadAdminMediaHeaderXUploadFilenameMax),
+  "x-upload-content-type": zod.enum(['image/png', 'image/jpeg', 'image/webp', 'application/pdf']),
+  "x-upload-alt-text": zod.string().max(uploadAdminMediaHeaderXUploadAltTextMax).optional()
+})
+
+export const UploadAdminMediaResponse = zod.object({
+  "id": zod.string().uuid(),
+  "discoveryId": zod.string().uuid().nullable(),
+  "storageKey": zod.string(),
+  "fileName": zod.string(),
+  "contentType": zod.enum(['image/png', 'image/jpeg', 'image/webp', 'application/pdf']),
+  "sizeBytes": zod.number().int(),
+  "altText": zod.string().nullable(),
+  "createdByUserId": zod.string().uuid().nullable(),
+  "createdAt": zod.coerce.date(),
+  "mediaUrl": zod.string()
+})
+
+
+/**
+ * @summary Update media details or content assignment
+ */
+export const UpdateAdminMediaParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const updateAdminMediaBodyAltTextMax = 500;
+
+
+
+export const UpdateAdminMediaBody = zod.object({
+  "discoveryId": zod.string().uuid().nullable(),
+  "altText": zod.string().max(updateAdminMediaBodyAltTextMax).nullable()
+})
+
+export const UpdateAdminMediaResponse = zod.object({
+  "id": zod.string().uuid(),
+  "discoveryId": zod.string().uuid().nullable(),
+  "storageKey": zod.string(),
+  "fileName": zod.string(),
+  "contentType": zod.enum(['image/png', 'image/jpeg', 'image/webp', 'application/pdf']),
+  "sizeBytes": zod.number().int(),
+  "altText": zod.string().nullable(),
+  "createdByUserId": zod.string().uuid().nullable(),
+  "createdAt": zod.coerce.date(),
+  "mediaUrl": zod.string()
+})
+
+
+/**
+ * @summary Delete an unreferenced media asset
+ */
+export const DeleteAdminMediaParams = zod.object({
+  "id": zod.coerce.string().uuid()
+})
+
+export const DeleteAdminMediaResponse = zod.void()
+
+
+/**
+ * @summary Fetch media attached to published content or accessible to an administrator
+ */
+export const GetMediaAssetParams = zod.object({
+  "storageKey": zod.coerce.string()
+})
+
+export const GetMediaAssetResponse = zod.unknown()
+
+
+/**
  * @summary Preview a discovery without publishing it
  */
 export const GetAdminDiscoveryPreviewParams = zod.object({
@@ -413,6 +516,7 @@ export const GetAdminDiscoveryPreviewResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -453,6 +557,7 @@ export const PerformAdminPublishingActionResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -616,7 +721,6 @@ export const CreateDiscoveryBody = zod.object({
   "url": zod.string().url().max(createDiscoveryBodyUrlMax),
   "summary": zod.string().max(createDiscoveryBodySummaryMax).nullish(),
   "description": zod.string().max(createDiscoveryBodyDescriptionMax).nullish(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']).optional(),
   "tags": zod.array(zod.string().min(1).max(createDiscoveryBodyTagsItemMax)),
   "placements": zod.array(zod.object({
   "categoryId": zod.string().uuid(),
@@ -633,6 +737,7 @@ export const CreateDiscoveryResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
@@ -682,7 +787,6 @@ export const UpdateDiscoveryBody = zod.object({
   "url": zod.string().url().max(updateDiscoveryBodyUrlMax),
   "summary": zod.string().max(updateDiscoveryBodySummaryMax).nullish(),
   "description": zod.string().max(updateDiscoveryBodyDescriptionMax).nullish(),
-  "status": zod.enum(['draft', 'review', 'published', 'archived']).optional(),
   "tags": zod.array(zod.string().min(1).max(updateDiscoveryBodyTagsItemMax)),
   "placements": zod.array(zod.object({
   "categoryId": zod.string().uuid(),
@@ -699,6 +803,7 @@ export const UpdateDiscoveryResponse = zod.object({
   "url": zod.string(),
   "summary": zod.string().nullable(),
   "description": zod.string().nullable(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
   "tags": zod.array(zod.object({
   "id": zod.string(),
   "slug": zod.string(),
